@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administrator | Tutor Coordination Agent</title>
+  <link rel="stylesheet" href="/shared.css">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Administrator</h1>
+        <p class="tagline">Manage matching, follow-ups, leave requests, and message drafts</p>
+      </div>
+      <div class="actions">
+        <button class="secondary" id="refreshButton" type="button">Refresh</button>
+        <span class="status" id="status">Loading</span>
+      </div>
+    </header>
+
+    <nav class="site-nav">
+      <a href="/home.html">Home</a>
+      <a href="/parents.html">Parents & Students</a>
+      <a href="/teachers.html">Teachers</a>
+      <a class="active" href="/admin.html">Administrator</a>
+    </nav>
+
+    <main class="layout-split">
+      <section class="left">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Inbox Paste</h2>
+          </div>
+          <form class="panel-body" id="inboxForm">
+            <label>Parent
+              <input name="parent_name" value="Unknown parent">
+            </label>
+            <textarea name="messages" placeholder="One parent message per line"></textarea>
+            <button type="submit">Process Inbox</button>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Customer FAQ Draft</h2>
+          </div>
+          <form class="panel-body" id="faqForm">
+            <textarea name="question" placeholder="Paste repeated customer question"></textarea>
+            <label>Force Topic
+              <input name="topic" placeholder="optional: pricing, trial_class, payment">
+            </label>
+            <button type="submit">Draft FAQ Reply</button>
+            <div class="draft" id="faqOutput">Paste a customer question to draft a reusable reply.</div>
+          </form>
+        </div>
+      </section>
+
+      <section class="right">
+        <div class="metrics" id="metrics"></div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Inquiries</h2>
+            <span class="pill" id="selectedInquiryLabel">No inquiry selected</span>
+          </div>
+          <div class="panel-body">
+            <input id="inquiryFilter" placeholder="Filter by student name..." style="margin-bottom: 1rem;">
+            <div class="records" id="inquiries"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Teacher Matches</h2>
+            <button class="secondary" id="findMatchesButton" type="button">Find Matches</button>
+          </div>
+          <div class="panel-body">
+            <div class="records" id="matchCandidates"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Active Matches</h2>
+            </div>
+            <div class="panel-body">
+              <div class="records" id="matches"></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Follow-Ups</h2>
+            </div>
+            <div class="panel-body">
+              <div class="records" id="followups"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Leave Requests</h2>
+              <span class="pill" id="selectedLeaveLabel">No leave selected</span>
+            </div>
+            <div class="panel-body">
+              <div class="records" id="leaveRequests"></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Leave Drafts</h2>
+              <div class="actions">
+                <select id="leaveDraftKind">
+                  <option value="teacher">Teacher</option>
+                  <option value="parent">Parent</option>
+                  <option value="doc_note">Doc note</option>
+                </select>
+                <button class="secondary" id="leaveDraftButton" type="button">Draft</button>
+                <button class="secondary" id="docUpdatedButton" type="button">Doc Updated</button>
+                <button class="secondary" id="teacherNotifiedButton" type="button">Teacher Notified</button>
+                <button class="secondary" id="parentConfirmedButton" type="button">Parent Confirmed</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="draft" id="leaveDraftOutput">Select a leave request to draft notices or doc notes.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Message Draft</h2>
+            <div class="actions">
+              <select id="draftKind">
+                <option value="ask_teacher">Ask teacher</option>
+                <option value="parent_intro">Parent intro</option>
+                <option value="followup">Follow-up</option>
+                <option value="trial_confirm">Trial confirm</option>
+                <option value="payment_reminder">Payment reminder</option>
+              </select>
+              <button class="secondary" id="draftButton" type="button">Draft</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="draft" id="draftOutput">Select or create a match, then draft a message.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/shared.js"></script>
+  <script>
+    function currentInquiryFilter() {
+      const el = document.querySelector("#inquiryFilter");
+      return el ? el.value.trim() : "";
+    }
+
+    function renderPage() {
+      if (!appState.data) return;
+      const filter = currentInquiryFilter();
+      renderMetrics(appState.data.summary);
+      renderInquiries(appState.data.inquiries, { onSelect: renderPage, filterStudent: filter });
+      renderMatches(appState.data.matches, { onSelect: renderPage });
+      renderFollowups(appState.data.followups);
+      renderLeaveRequests(appState.data.leave_requests, { onSelect: renderPage });
+    }
+
+    async function findMatches() {
+      if (!appState.selectedInquiryId) {
+        setStatus("Select an inquiry first", true);
+        return;
+      }
+      const candidates = await api(`/api/matches?inquiry_id=${encodeURIComponent(appState.selectedInquiryId)}`);
+      renderCandidates(candidates, createMatch);
+      setStatus("Matches loaded");
+    }
+
+    async function createMatch(teacherId) {
+      if (!appState.selectedInquiryId) {
+        setStatus("Select an inquiry first", true);
+        return;
+      }
+      const match = await api("/api/create-match", {
+        method: "POST",
+        body: JSON.stringify({ inquiry_id: appState.selectedInquiryId, teacher_id: teacherId })
+      });
+      appState.selectedMatchId = match.id;
+      await loadState();
+      renderPage();
+      setStatus(`Created ${match.id}`);
+    }
+
+    async function draftMessage() {
+      if (!appState.selectedMatchId) {
+        setStatus("Select a match first", true);
+        return;
+      }
+      const result = await api("/api/draft", {
+        method: "POST",
+        body: JSON.stringify({
+          kind: document.querySelector("#draftKind").value,
+          match_id: appState.selectedMatchId
+        })
+      });
+      document.querySelector("#draftOutput").textContent = result.message;
+      setStatus("Draft ready");
+    }
+
+    async function draftLeaveMessage() {
+      if (!appState.selectedLeaveId) {
+        setStatus("Select a leave request first", true);
+        return;
+      }
+      const result = await api("/api/draft-leave", {
+        method: "POST",
+        body: JSON.stringify({
+          kind: document.querySelector("#leaveDraftKind").value,
+          leave_id: appState.selectedLeaveId
+        })
+      });
+      document.querySelector("#leaveDraftOutput").textContent = result.message;
+      setStatus("Leave draft ready");
+    }
+
+    async function markDocUpdated() {
+      if (!appState.selectedLeaveId) {
+        setStatus("Select a leave request first", true);
+        return;
+      }
+      await api("/api/mark-doc-updated", {
+        method: "POST",
+        body: JSON.stringify({ leave_id: appState.selectedLeaveId })
+      });
+      await loadState();
+      renderPage();
+      setStatus("Google doc marked updated");
+    }
+
+    async function markTeacherNotified() {
+      if (!appState.selectedLeaveId) {
+        setStatus("Select a leave request first", true);
+        return;
+      }
+      await api("/api/mark-teacher-notified", {
+        method: "POST",
+        body: JSON.stringify({ leave_id: appState.selectedLeaveId })
+      });
+      await loadState();
+      renderPage();
+      setStatus("Teacher marked notified");
+    }
+
+    async function markParentConfirmed() {
+      if (!appState.selectedLeaveId) {
+        setStatus("Select a leave request first", true);
+        return;
+      }
+      await api("/api/mark-parent-confirmed", {
+        method: "POST",
+        body: JSON.stringify({ leave_id: appState.selectedLeaveId })
+      });
+      await loadState();
+      renderPage();
+      setStatus("Parent marked confirmed");
+    }
+
+    bindRefreshButton(async () => {
+      await loadState();
+      renderPage();
+      setStatus("Ready");
+    });
+
+    document.querySelector("#findMatchesButton").addEventListener("click", () => findMatches().catch(error => setStatus(error.message, true)));
+    document.querySelector("#draftButton").addEventListener("click", () => draftMessage().catch(error => setStatus(error.message, true)));
+    document.querySelector("#leaveDraftButton").addEventListener("click", () => draftLeaveMessage().catch(error => setStatus(error.message, true)));
+    document.querySelector("#docUpdatedButton").addEventListener("click", () => markDocUpdated().catch(error => setStatus(error.message, true)));
+    document.querySelector("#teacherNotifiedButton").addEventListener("click", () => markTeacherNotified().catch(error => setStatus(error.message, true)));
+    document.querySelector("#parentConfirmedButton").addEventListener("click", () => markParentConfirmed().catch(error => setStatus(error.message, true)));
+
+    document.querySelector("#inquiryFilter")?.addEventListener("input", () => {
+      renderPage();
+    });
+
+    document.querySelector("#inboxForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      await api("/api/inbox", {
+        method: "POST",
+        body: JSON.stringify(formData(event.currentTarget))
+      });
+      event.currentTarget.reset();
+      await loadState();
+      renderPage();
+      setStatus("Inbox processed");
+    });
+
+    document.querySelector("#faqForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      const result = await api("/api/draft-faq", {
+        method: "POST",
+        body: JSON.stringify(formData(event.currentTarget))
+      });
+      const matched = result.matched && result.matched.length ? `Topic: ${result.topic}\n\n` : "";
+      document.querySelector("#faqOutput").textContent = `${matched}${result.reply}`;
+      setStatus("FAQ reply ready");
+    });
+
+    loadState()
+      .then(() => {
+        renderPage();
+        setStatus("Ready");
+      })
+      .catch(error => setStatus(error.message, true));
+  </script>
+</body>
+</html>

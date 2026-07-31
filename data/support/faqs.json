@@ -1,0 +1,105 @@
+[
+  {
+    "id": "F0001",
+    "topic": "pricing",
+    "keywords": [
+      "price",
+      "pricing",
+      "cost",
+      "rate",
+      "how much",
+      "fee",
+      "tuition"
+    ],
+    "answer": "Hi! The price depends on the student's level, subject, and teacher. If you send the student's grade, subject, and available times, I can help find a good teacher and confirm the rate.",
+    "created_at": "2026-06-17T00:00:00",
+    "updated_at": "2026-06-17T00:00:00"
+  },
+  {
+    "id": "F0002",
+    "topic": "trial_class",
+    "keywords": [
+      "trial",
+      "try",
+      "first class",
+      "demo"
+    ],
+    "answer": "Yes, we can usually arrange a trial class. Please send the student's grade, subject, current needs, and available times, then I can check which teacher is a good fit.",
+    "created_at": "2026-06-17T00:00:00",
+    "updated_at": "2026-06-17T00:00:00"
+  },
+  {
+    "id": "F0003",
+    "topic": "teacher_matching",
+    "keywords": [
+      "teacher",
+      "match",
+      "recommend",
+      "available",
+      "find"
+    ],
+    "answer": "I match students based on subject, grade level, goals, schedule, and teacher availability. After I understand the student's needs, I can recommend a suitable teacher.",
+    "created_at": "2026-06-17T00:00:00",
+    "updated_at": "2026-06-17T00:00:00"
+  },
+  {
+    "id": "F0004",
+    "topic": "class_format",
+    "keywords": [
+      "online",
+      "in person",
+      "zoom",
+      "format",
+      "wechat",
+      "class"
+    ],
+    "answer": "Classes are arranged based on the teacher and student's situation. Many classes can be online, and we can confirm the exact format when matching the teacher.",
+    "created_at": "2026-06-17T00:00:00",
+    "updated_at": "2026-06-17T00:00:00"
+  },
+  {
+    "id": "F0005",
+    "topic": "payment",
+    "keywords": [
+      "pay",
+      "payment",
+      "wechat pay",
+      "zelle",
+      "venmo"
+    ],
+    "answer": "Payment details can be confirmed after the teacher, schedule, and lesson plan are set. I will let you know the amount and payment method before classes begin.",
+    "created_at": "2026-06-17T00:00:00",
+    "updated_at": "2026-06-17T00:00:00"
+  },
+  {
+    "id": "F0006",
+    "topic": "cancellation_policy",
+    "keywords": [
+      "cancel",
+      "leave",
+      "miss",
+      "absence",
+      "reschedule",
+      "makeup"
+    ],
+    "answer": "If the student needs to miss or reschedule a class, please let me know as early as possible so I can inform the teacher and update the class record.",
+    "created_at": "2026-06-17T00:00:00",
+    "updated_at": "2026-06-17T00:00:00"
+  },
+  {
+    "id": "F0007",
+    "topic": "available_subjects",
+    "keywords": [
+      "subject",
+      "math",
+      "english",
+      "science",
+      "chinese",
+      "sat",
+      "act"
+    ],
+    "answer": "We can help look for teachers in subjects such as math, English, Chinese, science, and test prep. Please send the student's grade and the subject they need.",
+    "created_at": "2026-06-17T00:00:00",
+    "updated_at": "2026-06-17T00:00:00"
+  }
+]

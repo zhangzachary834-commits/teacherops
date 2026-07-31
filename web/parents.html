@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Parents & Students | Tutor Coordination Agent</title>
+  <link rel="stylesheet" href="/shared.css">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Parents & Students</h1>
+        <p class="tagline">Request tutoring, ask questions, and submit leave notices</p>
+      </div>
+      <div class="actions">
+        <button class="secondary" id="refreshButton" type="button">Refresh</button>
+        <span class="status" id="status">Loading</span>
+      </div>
+    </header>
+
+    <nav class="site-nav">
+      <a href="/home.html">Home</a>
+      <a class="active" href="/parents.html">Parents & Students</a>
+      <a href="/teachers.html">Teachers</a>
+      <a href="/admin.html">Administrator</a>
+    </nav>
+
+    <main class="layout-single">
+      <section class="stack">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>New Inquiry</h2>
+          </div>
+          <form class="panel-body" id="inquiryForm">
+            <div class="grid-2">
+              <label>Parent
+                <input name="parent_name" required placeholder="Parent Wang">
+              </label>
+              <label>Student
+                <input name="student_name" placeholder="Eric">
+              </label>
+            </div>
+            <textarea name="raw_message" placeholder="Paste your message here, e.g. My son is grade 8 and needs math twice a week, Tuesday and Friday after 6."></textarea>
+            <div class="grid-2">
+              <label>Subject
+                <input name="subject" placeholder="math">
+              </label>
+              <label>Level
+                <input name="level" placeholder="grade 8">
+              </label>
+            </div>
+            <label>Availability
+              <input name="availability" placeholder="tuesday after 6; friday after 6">
+            </label>
+            <button type="submit">Submit Inquiry</button>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Ask a Common Question</h2>
+          </div>
+          <form class="panel-body" id="faqForm">
+            <textarea name="question" placeholder="Example: How much is math tutoring and can we do a trial?"></textarea>
+            <button type="submit">Get Suggested Reply</button>
+            <div class="draft" id="faqOutput">Ask a question to see a suggested reply you can copy.</div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Request Temporary Leave</h2>
+          </div>
+          <form class="panel-body" id="leaveForm">
+            <textarea name="raw_message" placeholder="Example: Eric needs to take leave this Friday because of travel."></textarea>
+            <button type="submit">Submit Leave Request</button>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Inquiry Status</h2>
+          </div>
+          <div class="panel-body">
+            <input id="inquiryFilter" placeholder="Filter by student name..." style="margin-bottom: 1rem;">
+            <div class="records" id="inquiries"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/shared.js"></script>
+  <script>
+    function currentInquiryFilter() {
+      const el = document.querySelector("#inquiryFilter");
+      return el ? el.value.trim() : "";
+    }
+
+    function renderPage() {
+      if (!appState.data) return;
+      const filter = currentInquiryFilter();
+      renderInquiries(appState.data.inquiries, { selectable: false, filterStudent: filter });
+    }
+
+    bindRefreshButton(async () => {
+      await loadState();
+      renderPage();
+      setStatus("Ready");
+    });
+
+    document.querySelector("#inquiryFilter")?.addEventListener("input", () => {
+      renderPage();
+    });
+
+    document.querySelector("#inquiryForm").addEventListener("submit", event => {
+      event.preventDefault();
+      submitJson(event.currentTarget, "/api/inquiries", "Inquiry submitted", renderPage)
+        .catch(error => setStatus(error.message, true));
+    });
+
+    document.querySelector("#leaveForm").addEventListener("submit", event => {
+      event.preventDefault();
+      submitJson(event.currentTarget, "/api/leave-requests", "Leave request submitted", renderPage)
+        .catch(error => setStatus(error.message, true));
+    });
+
+    document.querySelector("#faqForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      const result = await api("/api/draft-faq", {
+        method: "POST",
+        body: JSON.stringify(formData(event.currentTarget))
+      });
+      const matched = result.matched && result.matched.length ? `Topic: ${result.topic}\n\n` : "";
+      document.querySelector("#faqOutput").textContent = `${matched}${result.reply}`;
+      setStatus("Suggested reply ready");
+    });
+
+    loadState()
+      .then(() => {
+        renderPage();
+        setStatus("Ready");
+      })
+      .catch(error => setStatus(error.message, true));
+  </script>
+</body>
+</html>

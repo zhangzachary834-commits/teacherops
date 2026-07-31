@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teachers | Tutor Coordination Agent</title>
+  <link rel="stylesheet" href="/shared.css">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Teachers</h1>
+        <p class="tagline">Register your profile and view your active student matches</p>
+      </div>
+      <div class="actions">
+        <button class="secondary" id="refreshButton" type="button">Refresh</button>
+        <span class="status" id="status">Loading</span>
+      </div>
+    </header>
+
+    <nav class="site-nav">
+      <a href="/home.html">Home</a>
+      <a href="/parents.html">Parents & Students</a>
+      <a class="active" href="/teachers.html">Teachers</a>
+      <a href="/admin.html">Administrator</a>
+    </nav>
+
+    <main class="layout-single">
+      <section class="stack">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Teacher Profile</h2>
+          </div>
+          <form class="panel-body" id="teacherForm">
+            <label>Name
+              <input name="name" required placeholder="Ms. Chen">
+            </label>
+            <div class="grid-2">
+              <label>Subjects
+                <input name="subjects" required placeholder="math; algebra">
+              </label>
+              <label>Rate
+                <input name="rate" placeholder="$40/hr">
+              </label>
+            </div>
+            <label>Levels
+              <input name="levels" placeholder="grade 6; grade 7; grade 8">
+            </label>
+            <div class="grid-2">
+              <label>Availability
+                <input name="availability" placeholder="tuesday after 6; friday after 6">
+              </label>
+              <label>Capacity
+                <input name="capacity" type="number" min="0" value="1">
+              </label>
+            </div>
+            <button type="submit">Save Teacher Profile</button>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Find My Matches</h2>
+          </div>
+          <div class="panel-body">
+            <label>Your Name
+              <input id="teacherFilter" placeholder="Ms. Chen">
+            </label>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Request Temporary Leave</h2>
+          </div>
+          <form class="panel-body" id="leaveForm">
+            <textarea name="raw_message" placeholder="Example: I am sick and need to cancel Eric's class next Tuesday."></textarea>
+            <button type="submit">Submit Leave Request</button>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Active Matches</h2>
+          </div>
+          <div class="panel-body">
+            <div class="records" id="matches"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Leave Requests</h2>
+          </div>
+          <div class="panel-body">
+            <div class="records" id="leaveRequests"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Registered Teachers</h2>
+          </div>
+          <div class="panel-body">
+            <div class="records" id="teachers"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/shared.js"></script>
+  <script>
+    function currentTeacherFilter() {
+      return document.querySelector("#teacherFilter").value.trim();
+    }
+
+    function renderPage() {
+      if (!appState.data) return;
+      const filter = currentTeacherFilter();
+      renderMatches(appState.data.matches, { selectable: false, filterTeacher: filter });
+      renderLeaveRequests(appState.data.leave_requests, { selectable: false, filterTeacher: filter });
+      renderTeachers(appState.data.teachers, { filterName: filter });
+    }
+
+    bindRefreshButton(async () => {
+      await loadState();
+      renderPage();
+      setStatus("Ready");
+    });
+
+    document.querySelector("#teacherForm").addEventListener("submit", event => {
+      event.preventDefault();
+      submitJson(event.currentTarget, "/api/teachers", "Teacher profile saved", renderPage)
+        .catch(error => setStatus(error.message, true));
+    });
+    
+    document.querySelector("#teacherForm input[name='name']").addEventListener("input", event => {
+      if (!appState.data) return;
+      const name = event.target.value.trim().toLowerCase();
+      const teacher = appState.data.teachers.find(t => (t.name || "").toLowerCase() === name);
+      if (teacher) {
+        const form = document.querySelector("#teacherForm");
+        form.elements["subjects"].value = teacher.subjects ? teacher.subjects.join("; ") : "";
+        form.elements["levels"].value = teacher.levels ? teacher.levels.join("; ") : "";
+        form.elements["availability"].value = teacher.availability ? teacher.availability.join("; ") : "";
+        form.elements["rate"].value = teacher.rate || "";
+        form.elements["capacity"].value = teacher.capacity || 1;
+      }
+    });
+
+    document.querySelector("#teacherFilter").addEventListener("input", renderPage);
+
+    document.querySelector("#leaveForm").addEventListener("submit", event => {
+      event.preventDefault();
+      submitJson(event.currentTarget, "/api/leave-requests", "Leave request submitted", renderPage)
+        .catch(error => setStatus(error.message, true));
+    });
+
+    loadState()
+      .then(() => {
+        renderPage();
+        setStatus("Ready");
+      })
+      .catch(error => setStatus(error.message, true));
+  </script>
+</body>
+</html>

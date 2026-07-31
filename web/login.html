@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Login - Tutor Coordination Agent</title>
+  <link rel="stylesheet" href="/shared.css">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Tutor Coordination Agent</h1>
+    </header>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Login</h2>
+      </div>
+      <div class="panel-body">
+        <label>Email
+          <input type="email" id="email" placeholder="you@example.com">
+        </label>
+        <label>Password
+          <input type="password" id="password">
+        </label>
+        <div id="loginError" class="muted" style="color: red; margin-top: 8px;"></div>
+        <div style="margin-top: 16px;">
+          <button class="primary" id="loginBtn">Login</button>
+          <a href="/register.html" style="margin-left: 16px;">Need an account? Register</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("loginBtn").addEventListener("click", async () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const errorDiv = document.getElementById("loginError");
+      errorDiv.textContent = "";
+
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || "Login failed");
+        }
+        
+        localStorage.setItem("token", data.access_token);
+        localStorage.setItem("role", data.role);
+        
+        if (data.role === "admin" || data.role === "developer") {
+          window.location.href = "/admin.html";
+        } else if (data.role === "teacher") {
+          window.location.href = "/teachers.html";
+        } else {
+          window.location.href = "/parents.html";
+        }
+      } catch (err) {
+        errorDiv.textContent = err.message;
+      }
+    });
+  </script>
+</body>
+</html>

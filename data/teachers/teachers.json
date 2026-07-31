@@ -1,0 +1,104 @@
+[
+  {
+    "id": "T0001",
+    "name": "Ms. Chen",
+    "subjects": [
+      "math"
+    ],
+    "levels": [
+      "grade 6",
+      "grade 7",
+      "grade 8"
+    ],
+    "availability": [
+      "tuesday after 6",
+      "friday after 6"
+    ],
+    "rate": "$40/hr",
+    "capacity": 2,
+    "active_matches": 0,
+    "contact": "",
+    "notes": "",
+    "created_at": "2026-06-15T17:58:37",
+    "updated_at": "2026-06-15T17:58:37"
+  },
+  {
+    "id": "T0002",
+    "name": "Ms. Chen",
+    "subjects": [
+      "math",
+      "algebra"
+    ],
+    "levels": [
+      "everything hahahahaha"
+    ],
+    "availability": [
+      "idk"
+    ],
+    "rate": "40/hr",
+    "capacity": 4,
+    "active_matches": 0,
+    "contact": "",
+    "notes": "",
+    "created_at": "2026-07-10T23:57:39",
+    "updated_at": "2026-07-10T23:57:39"
+  },
+  {
+    "id": "T0003",
+    "name": "ms. chen",
+    "subjects": [
+      "algebra"
+    ],
+    "levels": [
+      "grade 5"
+    ],
+    "availability": [
+      "tuesday after 6"
+    ],
+    "rate": "$40",
+    "capacity": 1,
+    "active_matches": 0,
+    "contact": "",
+    "notes": "",
+    "created_at": "2026-07-11T21:55:53",
+    "updated_at": "2026-07-11T21:55:53"
+  },
+  {
+    "id": "T0004",
+    "name": "ms. zhao",
+    "subjects": [
+      "science"
+    ],
+    "levels": [
+      "7"
+    ],
+    "availability": [
+      "every day at 5-8"
+    ],
+    "rate": "$120",
+    "capacity": 3,
+    "active_matches": 0,
+    "contact": "",
+    "notes": "",
+    "created_at": "2026-07-11T21:57:14",
+    "updated_at": "2026-07-11T21:57:14"
+  },
+  {
+    "id": "T0005",
+    "name": "ms rao",
+    "subjects": [
+      "chinese"
+    ],
+    "levels": [
+      "grade 5"
+    ],
+    "availability": [],
+    "rate": "35",
+    "capacity": 1,
+    "active_matches": 0,
+    "contact": "",
+    "notes": "",
+    "created_at": "2026-07-15T15:29:47",
+    "updated_at": "2026-07-15T15:29:47"
+  }
+]

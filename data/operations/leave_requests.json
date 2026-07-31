@@ -1,0 +1,38 @@
+[
+  {
+    "id": "L0001",
+    "parent_name": "parent wang",
+    "student_name": "eric",
+    "teacher_name": "ms. chen",
+    "subject": "math",
+    "class_date": "2026-06-01",
+    "reason": "travel",
+    "raw_message": "test",
+    "status": "leave_requested",
+    "teacher_notified": false,
+    "parent_confirmed": false,
+    "google_doc_updated": false,
+    "next_action": "notify teacher and update Google doc",
+    "notes": "",
+    "created_at": "2026-07-11T21:57:47",
+    "updated_at": "2026-07-11T21:57:47"
+  },
+  {
+    "id": "L0002",
+    "parent_name": "parent wang",
+    "student_name": "eric",
+    "teacher_name": "",
+    "subject": "algebra",
+    "class_date": "",
+    "reason": "",
+    "raw_message": " Ineed to take a leave",
+    "status": "leave_requested",
+    "teacher_notified": false,
+    "parent_confirmed": false,
+    "google_doc_updated": false,
+    "next_action": "notify teacher and update Google doc",
+    "notes": "",
+    "created_at": "2026-07-15T15:26:48",
+    "updated_at": "2026-07-15T15:26:48"
+  }
+]

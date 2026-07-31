@@ -1,0 +1,58 @@
+[
+  {
+    "id": "I0001",
+    "parent_name": "Parent Wang",
+    "student_name": "Eric",
+    "subject": "math",
+    "level": "grade 8",
+    "availability": [
+      "friday 6",
+      "tuesday 6"
+    ],
+    "frequency": "twice a week",
+    "raw_message": "My son is grade 8 and needs math twice a week, Tuesday and Friday after 6.",
+    "notes": "",
+    "status": "need_teacher",
+    "next_action": "find matching teacher",
+    "last_contacted": "",
+    "created_at": "2026-06-15T17:58:46",
+    "updated_at": "2026-06-15T17:58:46"
+  },
+  {
+    "id": "I0002",
+    "parent_name": "Parent Wang",
+    "student_name": "Eric",
+    "subject": "math",
+    "level": "grade 8",
+    "availability": [
+      "friday 6",
+      "tuesday 6"
+    ],
+    "frequency": "twice a week",
+    "raw_message": "My son is grade 8 and needs math twice a week, Tuesday and Friday after 6.",
+    "notes": "",
+    "status": "need_teacher",
+    "next_action": "find matching teacher",
+    "last_contacted": "",
+    "created_at": "2026-06-15T17:59:32",
+    "updated_at": "2026-06-15T17:59:32"
+  },
+  {
+    "id": "I0003",
+    "parent_name": "parent zhao",
+    "student_name": "test",
+    "subject": "life science",
+    "level": "grade 7",
+    "availability": [
+      "wednesday after 2"
+    ],
+    "frequency": "",
+    "raw_message": "test",
+    "notes": "",
+    "status": "need_teacher",
+    "next_action": "find matching teacher",
+    "last_contacted": "",
+    "created_at": "2026-07-15T16:19:28",
+    "updated_at": "2026-07-15T16:19:28"
+  }
+]

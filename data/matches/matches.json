@@ -1,0 +1,18 @@
+[
+  {
+    "id": "M0001",
+    "inquiry_id": "I0001",
+    "teacher_id": "T0001",
+    "parent_name": "Parent Wang",
+    "student_name": "Eric",
+    "teacher_name": "Ms. Chen",
+    "subject": "math",
+    "status": "teacher_contacted",
+    "next_action": "confirm teacher availability",
+    "last_contacted": "2026-06-15T18:05:58",
+    "payment_status": "not_started",
+    "notes": "",
+    "created_at": "2026-06-15T18:05:58",
+    "updated_at": "2026-06-15T18:05:58"
+  }
+]

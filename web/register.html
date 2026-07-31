@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Register - Tutor Coordination Agent</title>
+  <link rel="stylesheet" href="/shared.css">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Tutor Coordination Agent</h1>
+    </header>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Register</h2>
+      </div>
+      <div class="panel-body">
+        <label>Email
+          <input type="email" id="email" placeholder="you@example.com">
+        </label>
+        <label>Password
+          <input type="password" id="password">
+        </label>
+        <label>Role
+          <select id="role">
+            <option value="parent">Parent/Student</option>
+            <option value="teacher">Teacher</option>
+            <option value="admin">Administrator</option>
+            <option value="developer">Developer</option>
+          </select>
+        </label>
+        <div id="registerError" class="muted" style="color: red; margin-top: 8px;"></div>
+        <div style="margin-top: 16px;">
+          <button class="primary" id="registerBtn">Register</button>
+          <a href="/login.html" style="margin-left: 16px;">Already have an account? Login</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("registerBtn").addEventListener("click", async () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const role = document.getElementById("role").value;
+      const errorDiv = document.getElementById("registerError");
+      errorDiv.textContent = "";
+
+      try {
+        const res = await fetch("/api/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, role })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || "Registration failed");
+        }
+        
+        // Auto-login after register
+        const loginRes = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+        const loginData = await loginRes.json();
+        if (!loginRes.ok) throw new Error("Registered but login failed");
+        
+        localStorage.setItem("token", loginData.access_token);
+        localStorage.setItem("role", loginData.role);
+        
+        if (loginData.role === "admin" || loginData.role === "developer") {
+          window.location.href = "/admin.html";
+        } else if (loginData.role === "teacher") {
+          window.location.href = "/teachers.html";
+        } else {
+          window.location.href = "/parents.html";
+        }
+      } catch (err) {
+        errorDiv.textContent = err.message;
+      }
+    });
+  </script>
+</body>
+</html>
