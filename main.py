@@ -97,10 +97,10 @@ def get_state(current_user: dict = Depends(auth.get_current_user)):
     role = current_user["role"]
     profile_id = current_user.get("profile_id")
     
-    all_teachers = [t for t in agent.read_json(agent.TEACHERS_FILE) if t.get("status") != "archived"]
-    all_inquiries = [i for i in agent.read_json(agent.INQUIRIES_FILE) if i.get("status") != "archived"]
-    all_matches = [m for m in agent.read_json(agent.MATCHES_FILE) if m.get("status") != "archived"]
-    all_leaves = [l for l in agent.read_json(agent.LEAVE_REQUESTS_FILE) if l.get("status") != "archived"]
+    all_teachers = [t for t in agent.read_records(agent.TEACHERS_TABLE) if t.get("status") != "archived"]
+    all_inquiries = [i for i in agent.read_records(agent.INQUIRIES_TABLE) if i.get("status") != "archived"]
+    all_matches = [m for m in agent.read_records(agent.MATCHES_TABLE) if m.get("status") != "archived"]
+    all_leaves = [l for l in agent.read_records(agent.LEAVE_REQUESTS_TABLE) if l.get("status") != "archived"]
     
     if role in ["admin", "developer"]:
         teachers = all_teachers
@@ -127,7 +127,7 @@ def get_state(current_user: dict = Depends(auth.get_current_user)):
         "inquiries": inquiries,
         "matches": matches,
         "leave_requests": leaves,
-        "faqs": agent.read_json(agent.FAQS_FILE),
+        "faqs": agent.read_records(agent.FAQS_TABLE),
         "role": role,
         "profile_id": profile_id,
     }

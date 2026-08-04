@@ -15,29 +15,17 @@ class TutorCoordinationTests(unittest.TestCase):
 
         self.tmp = tempfile.TemporaryDirectory()
         self.original_data_dir = agent.DATA_DIR
-        self.original_teachers = agent.TEACHERS_FILE
-        self.original_inquiries = agent.INQUIRIES_FILE
-        self.original_matches = agent.MATCHES_FILE
-        self.original_leave_requests = agent.LEAVE_REQUESTS_FILE
-        self.original_faqs = agent.FAQS_FILE
+
 
         agent.DATA_DIR = Path(self.tmp.name)
-        agent.TEACHERS_FILE = agent.DATA_DIR / "teachers.json"
-        agent.INQUIRIES_FILE = agent.DATA_DIR / "inquiries.json"
-        agent.MATCHES_FILE = agent.DATA_DIR / "matches.json"
-        agent.LEAVE_REQUESTS_FILE = agent.DATA_DIR / "leave_requests.json"
-        agent.FAQS_FILE = agent.DATA_DIR / "faqs.json"
+
         agent.ensure_data_files()
 
     def tearDown(self):
         """Restore the real data paths after each test."""
 
         agent.DATA_DIR = self.original_data_dir
-        agent.TEACHERS_FILE = self.original_teachers
-        agent.INQUIRIES_FILE = self.original_inquiries
-        agent.MATCHES_FILE = self.original_matches
-        agent.LEAVE_REQUESTS_FILE = self.original_leave_requests
-        agent.FAQS_FILE = self.original_faqs
+
         self.tmp.cleanup()
 
     def test_extract_inquiry_from_parent_message(self):
@@ -127,7 +115,7 @@ class TutorCoordinationTests(unittest.TestCase):
             })
 
         summary = agent.import_csv("teachers", str(csv_path))
-        teachers = agent.read_json(agent.TEACHERS_FILE)
+        teachers = agent.read_records(agent.TEACHERS_TABLE)
         export_path = Path(self.tmp.name) / "exported_teachers.csv"
         export_summary = agent.export_csv("teachers", str(export_path))
 
@@ -146,7 +134,7 @@ class TutorCoordinationTests(unittest.TestCase):
             "Need SAT test prep on weekends",
         ], parent_name="Inbox Parent")
 
-        inquiries = agent.read_json(agent.INQUIRIES_FILE)
+        inquiries = agent.read_records(agent.INQUIRIES_TABLE)
 
         self.assertEqual(len(created), 2)
         self.assertEqual(len(inquiries), 2)
@@ -157,13 +145,14 @@ class TutorCoordinationTests(unittest.TestCase):
     def test_leave_request_tracks_doc_update_and_drafts_messages(self):
         """Leave requests should extract date info, draft messages, and track doc updates."""
 
-        leave = agent.add_leave_request(
-            parent_name="Parent Wang",
-            student_name="Eric",
-            teacher_name="Ms. Chen",
-            subject="math",
+        inq = agent.add_inquiry(parent_name="Parent Wang", raw_message="Eric needs math.")
+        teacher = agent.add_teacher("Ms. Chen", subjects="math")
+        match = agent.create_match(inq["id"], teacher["id"])
+        leaves = agent.add_leave_request(
             raw_message="Eric needs to take leave this Friday because of travel.",
+            current_user={"role": "parent", "profile_id": inq["id"]}
         )
+        leave = leaves[0]
         teacher_message = agent.draft_leave_message("teacher", leave["id"])
         doc_note = agent.draft_leave_message("doc_note", leave["id"])
         updated = agent.mark_doc_updated(leave["id"])
@@ -185,9 +174,9 @@ class TutorCoordinationTests(unittest.TestCase):
     def test_init_creates_json_lists(self):
         """Initial data files should be empty JSON lists."""
 
-        for path in [agent.TEACHERS_FILE, agent.INQUIRIES_FILE, agent.MATCHES_FILE, agent.LEAVE_REQUESTS_FILE]:
-            self.assertEqual(json.loads(path.read_text(encoding="utf-8")), [])
-        self.assertGreater(len(json.loads(agent.FAQS_FILE.read_text(encoding="utf-8"))), 0)
+        for table in [agent.TEACHERS_TABLE, agent.INQUIRIES_TABLE, agent.MATCHES_TABLE, agent.LEAVE_REQUESTS_TABLE]:
+            self.assertEqual(len(agent.read_records(table)), 0)
+        self.assertGreater(len(agent.read_records(agent.FAQS_TABLE)), 0)
 
 
 if __name__ == "__main__":

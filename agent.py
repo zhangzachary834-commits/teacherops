@@ -148,7 +148,7 @@ def read_records(table: str) -> list[dict]:
             
             # Auto-populate FAQs if empty (matches file behavior)
             if count == 0 and table_name == "faqs":
-                write_records(path, default_faq_records())
+                write_records(table, default_faq_records())
             
             cursor.execute(f"SELECT * FROM {table_name}")
             rows = cursor.fetchall()
@@ -173,12 +173,12 @@ def read_records(table: str) -> list[dict]:
         except sqlite3.OperationalError:
             db.init_db(db_path)
             if table_name == "faqs":
-                write_records(path, default_faq_records())
-            return read_records(path) # Retry once after init
+                write_records(table, default_faq_records())
+            return read_records(table) # Retry once after init
         finally:
             conn.close()
 
-def write_records(path: Path, data: list[dict]) -> None:
+def write_records(table: str, data: list[dict]) -> None:
     """Write a list of dicts back to SQLite (replaces the table content)."""
     with DATA_LOCK:
         db_path = DATA_DIR / "tutor.db"
@@ -566,6 +566,7 @@ def extract_inquiry(message: str) -> dict:
         "level": ai_result.get("level", infer_level(message)),
         "frequency": ai_result.get("frequency", infer_frequency(message)),
         "availability": ai_result.get("availability", infer_availability(message)),
+        "student_name": ai_result.get("student_name", infer_student_name(message)),
         "raw_message": message,
         "next_action": "find matching teacher",
     }
@@ -600,7 +601,7 @@ def add_inquiry(
     inquiry = {
         "id": make_id("I", inquiries),
         "parent_name": parent_name,
-        "student_name": student_name,
+        "student_name": student_name or extracted.get("student_name", ""),
         "subject": (subject or extracted.get("subject", "")).lower(),
         "level": (level or extracted.get("level", "")).lower(),
         "availability": normalize_list(availability) or extracted.get("availability", []),
