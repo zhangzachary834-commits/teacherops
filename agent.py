@@ -1,3 +1,4 @@
+from __future__ import annotations
 import argparse
 import csv
 import json
@@ -16,11 +17,11 @@ from availability import availability_overlap, overlap_minutes
 
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
-TEACHERS_FILE = DATA_DIR / "teachers" / "teachers.json"
-INQUIRIES_FILE = DATA_DIR / "inquiries" / "inquiries.json"
-MATCHES_FILE = DATA_DIR / "matches" / "matches.json"
-LEAVE_REQUESTS_FILE = DATA_DIR / "operations" / "leave_requests.json"
-FAQS_FILE = DATA_DIR / "support" / "faqs.json"
+TEACHERS_TABLE = "teachers"
+INQUIRIES_TABLE = "inquiries"
+MATCHES_TABLE = "matches"
+LEAVE_REQUESTS_TABLE = "leave_requests"
+FAQS_TABLE = "faqs"
 
 SUBJECT_KEYWORDS = {
     "math": ["math", "algebra", "geometry", "calculus", "precalculus"],
@@ -128,25 +129,18 @@ def now_iso() -> str:
 def ensure_data_files() -> None:
     """Create the data directory and empty JSON files if this is the first run."""
 
-    DATA_DIR.mkdir(exist_ok=True)
-    for path in [TEACHERS_FILE, INQUIRIES_FILE, MATCHES_FILE, LEAVE_REQUESTS_FILE]:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        if not path.exists():
-            path.write_text("[]\n", encoding="utf-8")
-    FAQS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    if not FAQS_FILE.exists():
-        FAQS_FILE.write_text(json.dumps(default_faq_records(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    db.init_db(DATA_DIR / "tutor.db")
 
 
 import db
 import sqlite3
 
-def read_json(path: Path) -> list[dict]:
+def read_records(table: str) -> list[dict]:
     """Read one of the agent's tables from SQLite and format it as a list of dicts."""
     with DATA_LOCK:
         db_path = DATA_DIR / "tutor.db"
         conn = db.get_db(db_path)
-        table_name = path.stem
+        table_name = table
         try:
             cursor = conn.cursor()
             cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
@@ -154,7 +148,7 @@ def read_json(path: Path) -> list[dict]:
             
             # Auto-populate FAQs if empty (matches file behavior)
             if count == 0 and table_name == "faqs":
-                write_json(path, default_faq_records())
+                write_records(path, default_faq_records())
             
             cursor.execute(f"SELECT * FROM {table_name}")
             rows = cursor.fetchall()
@@ -179,17 +173,17 @@ def read_json(path: Path) -> list[dict]:
         except sqlite3.OperationalError:
             db.init_db(db_path)
             if table_name == "faqs":
-                write_json(path, default_faq_records())
-            return read_json(path) # Retry once after init
+                write_records(path, default_faq_records())
+            return read_records(path) # Retry once after init
         finally:
             conn.close()
 
-def write_json(path: Path, data: list[dict]) -> None:
+def write_records(path: Path, data: list[dict]) -> None:
     """Write a list of dicts back to SQLite (replaces the table content)."""
     with DATA_LOCK:
         db_path = DATA_DIR / "tutor.db"
         conn = db.get_db(db_path)
-        table_name = path.stem
+        table_name = table
         cursor = conn.cursor()
         
         try:
@@ -270,15 +264,15 @@ def record_file(record_type: str) -> Path:
     """Return the JSON store for a supported record type."""
 
     if record_type == "teachers":
-        return TEACHERS_FILE
+        return TEACHERS_TABLE
     if record_type == "inquiries":
-        return INQUIRIES_FILE
+        return INQUIRIES_TABLE
     if record_type == "matches":
-        return MATCHES_FILE
+        return MATCHES_TABLE
     if record_type == "leave_requests":
-        return LEAVE_REQUESTS_FILE
+        return LEAVE_REQUESTS_TABLE
     if record_type == "faqs":
-        return FAQS_FILE
+        return FAQS_TABLE
     raise ValueError(f"Unknown record type '{record_type}'. Use one of: {', '.join(RECORD_TYPES)}.")
 
 
@@ -384,7 +378,7 @@ def add_teacher(
 ) -> dict:
     """Store a teacher profile or update an existing one if the name matches."""
 
-    teachers = read_json(TEACHERS_FILE)
+    teachers = read_records(TEACHERS_TABLE)
     existing_teacher = next((t for t in teachers if t.get("name", "").lower() == name.lower()), None)
     
     if existing_teacher:
@@ -416,7 +410,7 @@ def add_teacher(
         }
         teachers.append(teacher)
         
-    write_json(TEACHERS_FILE, teachers)
+    write_records(TEACHERS_TABLE, teachers)
     return teacher
 
 
@@ -601,7 +595,7 @@ def add_inquiry(
 ) -> dict:
     """Create a student inquiry, using extracted message details when fields are blank."""
 
-    inquiries = read_json(INQUIRIES_FILE)
+    inquiries = read_records(INQUIRIES_TABLE)
     extracted = extract_inquiry(raw_message) if raw_message else {}
     inquiry = {
         "id": make_id("I", inquiries),
@@ -620,7 +614,7 @@ def add_inquiry(
         "updated_at": now_iso(),
     }
     inquiries.append(inquiry)
-    write_json(INQUIRIES_FILE, inquiries)
+    write_records(INQUIRIES_TABLE, inquiries)
     return inquiry
 
 
@@ -722,8 +716,8 @@ def score_teacher(teacher: dict, inquiry: dict) -> MatchScore:
 def find_teacher_matches(inquiry_id: str, limit: int = 5) -> list[dict]:
     """Rank teachers for an inquiry and return a compact explanation of each fit."""
 
-    teachers = read_json(TEACHERS_FILE)
-    inquiries = read_json(INQUIRIES_FILE)
+    teachers = read_records(TEACHERS_TABLE)
+    inquiries = read_records(INQUIRIES_TABLE)
     inquiry = find_by_id(inquiries, inquiry_id)
     scored = [score_teacher(teacher, inquiry) for teacher in teachers]
     
@@ -752,9 +746,9 @@ def create_match(inquiry_id: str, teacher_id: str, status: str = "teacher_contac
     """Create the working record that ties one inquiry to one teacher."""
 
     with DATA_LOCK:
-        inquiries = read_json(INQUIRIES_FILE)
-        teachers = read_json(TEACHERS_FILE)
-        matches = read_json(MATCHES_FILE)
+        inquiries = read_records(INQUIRIES_TABLE)
+        teachers = read_records(TEACHERS_TABLE)
+        matches = read_records(MATCHES_TABLE)
         inquiry = find_by_id(inquiries, inquiry_id)
         teacher = find_by_id(teachers, teacher_id)
         match = {
@@ -775,8 +769,8 @@ def create_match(inquiry_id: str, teacher_id: str, status: str = "teacher_contac
         }
         matches.append(match)
         sync_teacher_active_matches(teachers, matches)
-        write_json(MATCHES_FILE, matches)
-        write_json(TEACHERS_FILE, teachers)
+        write_records(MATCHES_TABLE, matches)
+        write_records(TEACHERS_TABLE, teachers)
         return match
 
 
@@ -808,7 +802,7 @@ def add_leave_request(
 ) -> list[dict]:
     """Create leave requests that tracks messages and Google doc update status."""
     
-    leave_requests = read_json(LEAVE_REQUESTS_FILE)
+    leave_requests = read_records(LEAVE_REQUESTS_TABLE)
     extracted = extract_leave_request(raw_message) if raw_message else {}
     timestamp = now_iso()
     
@@ -816,13 +810,13 @@ def add_leave_request(
     profile_id = current_user.get("profile_id")
     
     # Get active matches
-    matches = [m for m in read_json(MATCHES_FILE) if m.get("status") not in ["archived", "closed", "dropped"]]
+    matches = [m for m in read_records(MATCHES_TABLE) if m.get("status") not in ["archived", "closed", "dropped"]]
     if role == "teacher":
         user_matches = [m for m in matches if m.get("teacher_id") == profile_id]
     elif role == "parent":
         # We don't explicitly store parent_id in match, but we know inquiry_id
         # Let's find inquiries for this parent
-        inquiries = [i for i in read_json(INQUIRIES_FILE) if i.get("id") == profile_id]
+        inquiries = [i for i in read_records(INQUIRIES_TABLE) if i.get("id") == profile_id]
         if inquiries:
             parent_name = inquiries[0].get("parent_name", "")
             user_matches = [m for m in matches if m.get("parent_name") == parent_name]
@@ -890,7 +884,7 @@ def add_leave_request(
             leave_requests.append(leave_request)
             new_requests.append(leave_request)
 
-    write_json(LEAVE_REQUESTS_FILE, leave_requests)
+    write_records(LEAVE_REQUESTS_TABLE, leave_requests)
     return new_requests
 
 
@@ -921,7 +915,7 @@ def row_to_leave_request(row: dict, existing: list[dict]) -> dict:
 def list_leave_requests(status: str = "") -> list[dict]:
     """Return leave requests, optionally filtered by status."""
 
-    leave_requests = read_json(LEAVE_REQUESTS_FILE)
+    leave_requests = read_records(LEAVE_REQUESTS_TABLE)
     if not status:
         return leave_requests
     return [request for request in leave_requests if request.get("status") == status]
@@ -949,7 +943,7 @@ def refresh_leave_request_status(leave_request: dict) -> None:
 def draft_leave_message(kind: str, leave_id: str) -> str:
     """Draft a teacher, parent, or Google-doc note for a leave request."""
 
-    leave_request = find_by_id(read_json(LEAVE_REQUESTS_FILE), leave_id)
+    leave_request = find_by_id(read_records(LEAVE_REQUESTS_TABLE), leave_id)
     student = leave_request.get("student_name") or "the student"
     teacher = leave_request.get("teacher_name") or "teacher"
     parent = leave_request.get("parent_name") or "there"
@@ -976,36 +970,36 @@ def draft_leave_message(kind: str, leave_id: str) -> str:
 def mark_doc_updated(leave_id: str) -> dict:
     """Mark a leave request's Google doc update as completed."""
 
-    leave_requests = read_json(LEAVE_REQUESTS_FILE)
+    leave_requests = read_records(LEAVE_REQUESTS_TABLE)
     leave_request = find_by_id(leave_requests, leave_id)
     leave_request["google_doc_updated"] = True
     refresh_leave_request_status(leave_request)
     leave_request["updated_at"] = now_iso()
-    write_json(LEAVE_REQUESTS_FILE, leave_requests)
+    write_records(LEAVE_REQUESTS_TABLE, leave_requests)
     return leave_request
 
 
 def mark_teacher_notified(leave_id: str) -> dict:
     """Mark a leave request as teacher notified."""
 
-    leave_requests = read_json(LEAVE_REQUESTS_FILE)
+    leave_requests = read_records(LEAVE_REQUESTS_TABLE)
     leave_request = find_by_id(leave_requests, leave_id)
     leave_request["teacher_notified"] = True
     refresh_leave_request_status(leave_request)
     leave_request["updated_at"] = now_iso()
-    write_json(LEAVE_REQUESTS_FILE, leave_requests)
+    write_records(LEAVE_REQUESTS_TABLE, leave_requests)
     return leave_request
 
 
 def mark_parent_confirmed(leave_id: str) -> dict:
     """Mark a leave request as parent confirmed."""
 
-    leave_requests = read_json(LEAVE_REQUESTS_FILE)
+    leave_requests = read_records(LEAVE_REQUESTS_TABLE)
     leave_request = find_by_id(leave_requests, leave_id)
     leave_request["parent_confirmed"] = True
     refresh_leave_request_status(leave_request)
     leave_request["updated_at"] = now_iso()
-    write_json(LEAVE_REQUESTS_FILE, leave_requests)
+    write_records(LEAVE_REQUESTS_TABLE, leave_requests)
     return leave_request
 
 
@@ -1026,7 +1020,7 @@ def row_to_faq(row: dict, existing: list[dict]) -> dict:
 def add_faq_template(topic: str, keywords: str, answer: str) -> dict:
     """Add a reusable answer template for repeated customer questions."""
 
-    faqs = read_json(FAQS_FILE)
+    faqs = read_records(FAQS_TABLE)
     timestamp = now_iso()
     faq = {
         "id": make_id("F", faqs),
@@ -1037,14 +1031,14 @@ def add_faq_template(topic: str, keywords: str, answer: str) -> dict:
         "updated_at": timestamp,
     }
     faqs.append(faq)
-    write_json(FAQS_FILE, faqs)
+    write_records(FAQS_TABLE, faqs)
     return faq
 
 
 def list_faqs() -> list[dict]:
     """Return the current FAQ answer bank."""
 
-    return read_json(FAQS_FILE)
+    return read_records(FAQS_TABLE)
 
 
 def classify_faq_question(question: str) -> list[dict]:
@@ -1052,7 +1046,7 @@ def classify_faq_question(question: str) -> list[dict]:
 
     lower = question.lower()
     matches = []
-    for faq in read_json(FAQS_FILE):
+    for faq in read_records(FAQS_TABLE):
         keywords = faq.get("keywords", [])
         hits = [keyword for keyword in keywords if keyword and keyword in lower]
         if hits:
@@ -1069,7 +1063,7 @@ def classify_faq_question(question: str) -> list[dict]:
 def draft_faq_reply(question: str, topic: str = "") -> dict:
     """Draft a reply to a repeated customer question from the FAQ answer bank."""
 
-    faqs = read_json(FAQS_FILE)
+    faqs = read_records(FAQS_TABLE)
     selected = None
     if topic:
         selected = next((faq for faq in faqs if faq.get("topic") == topic or faq.get("id") == topic), None)
@@ -1096,7 +1090,7 @@ def update_match(match_id: str, status: str | None = None, next_action: str | No
     """Update a match's pipeline status, next action, or notes."""
 
     with DATA_LOCK:
-        matches = read_json(MATCHES_FILE)
+        matches = read_records(MATCHES_TABLE)
         match = find_by_id(matches, match_id)
         if status:
             if status not in STATUS_ORDER:
@@ -1107,10 +1101,10 @@ def update_match(match_id: str, status: str | None = None, next_action: str | No
         if notes is not None:
             match["notes"] = notes
         match["updated_at"] = now_iso()
-        teachers = read_json(TEACHERS_FILE)
+        teachers = read_records(TEACHERS_TABLE)
         sync_teacher_active_matches(teachers, matches)
-        write_json(MATCHES_FILE, matches)
-        write_json(TEACHERS_FILE, teachers)
+        write_records(MATCHES_TABLE, matches)
+        write_records(TEACHERS_TABLE, teachers)
         return match
 
 
@@ -1132,9 +1126,9 @@ def needs_followup(row: dict, older_than_days: int) -> bool:
 def list_followups(older_than_days: int = 2) -> list[dict]:
     """List open inquiries, matches, and leave requests that need attention."""
 
-    inquiries = read_json(INQUIRIES_FILE)
-    matches = read_json(MATCHES_FILE)
-    leave_requests = read_json(LEAVE_REQUESTS_FILE)
+    inquiries = read_records(INQUIRIES_TABLE)
+    matches = read_records(MATCHES_TABLE)
+    leave_requests = read_records(LEAVE_REQUESTS_TABLE)
     items = []
     for inquiry in inquiries:
         if needs_followup(inquiry, older_than_days):
@@ -1172,9 +1166,9 @@ def list_followups(older_than_days: int = 2) -> list[dict]:
 def draft_message(kind: str, match_id: str = "", inquiry_id: str = "", teacher_id: str = "") -> str:
     """Draft a human-approved WeChat-style message for common coordination moments."""
 
-    inquiries = read_json(INQUIRIES_FILE)
-    teachers = read_json(TEACHERS_FILE)
-    matches = read_json(MATCHES_FILE)
+    inquiries = read_records(INQUIRIES_TABLE)
+    teachers = read_records(TEACHERS_TABLE)
+    matches = read_records(MATCHES_TABLE)
 
     match = find_by_id(matches, match_id) if match_id else {}
     inquiry = find_by_id(inquiries, inquiry_id or match.get("inquiry_id", "")) if (inquiry_id or match.get("inquiry_id")) else {}
@@ -1218,10 +1212,10 @@ def draft_message(kind: str, match_id: str = "", inquiry_id: str = "", teacher_i
 def weekly_report() -> dict:
     """Summarize the current tutoring hub workload and bottlenecks."""
 
-    inquiries = read_json(INQUIRIES_FILE)
-    matches = read_json(MATCHES_FILE)
-    teachers = read_json(TEACHERS_FILE)
-    leave_requests = read_json(LEAVE_REQUESTS_FILE)
+    inquiries = read_records(INQUIRIES_TABLE)
+    matches = read_records(MATCHES_TABLE)
+    teachers = read_records(TEACHERS_TABLE)
+    leave_requests = read_records(LEAVE_REQUESTS_TABLE)
     week_ago = date.today() - timedelta(days=7)
 
     def this_week(row: dict) -> bool:
@@ -1258,7 +1252,7 @@ def import_csv(record_type: str, path: str) -> dict:
     """Import teachers, inquiries, or matches from a CSV file."""
 
     store_path = record_file(record_type)
-    rows = read_json(store_path)
+    rows = read_records(store_path)
     imported = []
     with Path(path).open(newline="", encoding="utf-8") as csv_file:
         reader = csv.DictReader(csv_file)
@@ -1275,14 +1269,14 @@ def import_csv(record_type: str, path: str) -> dict:
                 record = row_to_faq(csv_row, rows + imported)
             imported.append(record)
     rows.extend(imported)
-    write_json(store_path, rows)
+    write_records(store_path, rows)
     return {"record_type": record_type, "imported": len(imported), "path": str(path)}
 
 
 def export_csv(record_type: str, path: str) -> dict:
     """Export one JSON store into a CSV file for spreadsheet editing/sharing."""
 
-    rows = read_json(record_file(record_type))
+    rows = read_records(record_file(record_type))
     fieldnames = []
     for row in rows:
         for key in row:
@@ -1478,19 +1472,19 @@ def archive_record(record_type: str, record_id: str) -> bool:
     """Set the status of a record to 'archived'."""
     filename = ""
     if record_type == "teacher":
-        filename = TEACHERS_FILE
+        filename = TEACHERS_TABLE
     elif record_type == "inquiry":
-        filename = INQUIRIES_FILE
+        filename = INQUIRIES_TABLE
     elif record_type == "match":
-        filename = MATCHES_FILE
+        filename = MATCHES_TABLE
     else:
         return False
 
-    records = read_json(filename)
+    records = read_records(filename)
     for row in records:
         if row["id"] == record_id:
             row["status"] = "archived"
-            write_json(filename, records)
+            write_records(filename, records)
             return True
     return False
 

@@ -7,33 +7,32 @@ This first version is intentionally human-in-the-loop. It does not send WeChat m
 ## Setup
 
 ```sh
-cd tutor-coordination-agent
+cd ~/Documents/GitHub/teacherops
+pip3 install fastapi uvicorn
 python3 agent.py init
 ```
 
 ## Web Interface
 
-Run the local browser interface:
+Run the local API server:
 
 ```sh
-cd tutor-coordination-agent
-python3 web_app.py
+cd ~/Documents/GitHub/teacherops
+uvicorn main:app --host 127.0.0.1 --port 8765 --reload
 ```
 
 Then open:
 
 ```text
-http://127.0.0.1:8765
+http://127.0.0.1:8765/docs
 ```
 
 The web interface can add teachers, add inquiries, process pasted inbox messages, find teacher matches, create match records, show follow-ups, and draft coordination messages.
 It also includes temporary leave requests and repeated customer FAQ replies.
 
-Data is stored locally in:
+Data is stored locally in SQLite:
 
-- `data/teachers.json`
-- `data/inquiries.json`
-- `data/matches.json`
+- `data/tutor.db`
 
 ## Example Flow
 
