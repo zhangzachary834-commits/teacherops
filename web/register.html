@@ -57,7 +57,9 @@
         
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.detail || "Registration failed");
+          let errMsg = data.detail || "Registration failed";
+          if (Array.isArray(data.detail)) errMsg = data.detail[0].msg;
+          throw new Error(errMsg);
         }
         
         // Auto-login after register

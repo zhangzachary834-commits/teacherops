@@ -48,7 +48,9 @@
         
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.detail || "Login failed");
+          let errMsg = data.detail || "Login failed";
+          if (Array.isArray(data.detail)) errMsg = data.detail[0].msg;
+          throw new Error(errMsg);
         }
         
         localStorage.setItem("token", data.access_token);

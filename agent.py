@@ -844,6 +844,8 @@ def add_leave_request(
         # Fallback if no matches found
         leave_request = {
             "id": make_id("L", leave_requests),
+            "inquiry_id": "",
+            "teacher_id": "",
             "parent_name": "",
             "student_name": extracted.get("student_name", ""),
             "teacher_name": "",
@@ -866,6 +868,8 @@ def add_leave_request(
         for m in matched_records:
             leave_request = {
                 "id": make_id("L", leave_requests),
+                "inquiry_id": m.get("inquiry_id", ""),
+                "teacher_id": m.get("teacher_id", ""),
                 "parent_name": m.get("parent_name", ""),
                 "student_name": m.get("student_name", ""),
                 "teacher_name": m.get("teacher_name", ""),
@@ -895,6 +899,8 @@ def row_to_leave_request(row: dict, existing: list[dict]) -> dict:
     timestamp = now_iso()
     return {
         "id": row.get("id") or make_id("L", existing),
+        "inquiry_id": row.get("inquiry_id", ""),
+        "teacher_id": row.get("teacher_id", ""),
         "parent_name": row.get("parent_name") or row.get("parent", ""),
         "student_name": row.get("student_name") or row.get("student", ""),
         "teacher_name": row.get("teacher_name") or row.get("teacher", ""),
