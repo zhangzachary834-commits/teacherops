@@ -530,3 +530,64 @@ main.layout-home {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------------------------------------------------
+   DEV TOOLS WIDGET
+--------------------------------------------------- */
+#dev-tools-widget {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--panel-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+  z-index: 9999;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateY(0);
+}
+
+#dev-tools-widget.collapsed {
+  transform: translateY(calc(100% - 40px));
+}
+
+#dev-tools-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+#dev-tools-widget button {
+  padding: 6px 12px;
+  font-size: 12px;
+  width: 100%;
+}
+
+#dev-tools-widget .dev-btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+#dev-tools-widget .dev-btn-group button {
+  flex: 1;
+}
+
+#dev-tools-widget hr {
+  border: none;
+  border-top: 1px solid var(--panel-border);
+  margin: 4px 0;
+}

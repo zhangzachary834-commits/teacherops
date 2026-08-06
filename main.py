@@ -14,6 +14,9 @@ import datetime
 app = FastAPI(title="Tutor Coordination Agent API")
 db.init_db(agent.DATA_DIR / "tutor.db")
 
+# DEV MODE FLAG - strictly disables dev tools in production
+DEV_MODE = os.environ.get("ENVIRONMENT", "dev") != "production"
+
 WEB_DIR = os.path.join(os.path.dirname(__file__), "web")
 
 @app.get("/")
@@ -302,4 +305,66 @@ def archive_record(req: ArchiveRecord, current_user: dict = Depends(auth.get_cur
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8765, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+# ---------------------------------------------------------
+# DEV ROUTES (Only available in DEV_MODE)
+# ---------------------------------------------------------
+if DEV_MODE:
+    @app.post("/api/dev/impersonate")
+    def dev_impersonate(role: str):
+        """Instantly get a JWT token for a specific role without a password."""
+        if role not in ["admin", "teacher", "parent"]:
+            raise HTTPException(400, "Invalid role")
+            
+        mock_id = f"dev_{role}_123"
+        mock_email = f"dev_{role}@example.com"
+        
+        db_path = agent.DATA_DIR / "tutor.db"
+        conn = db.get_db(db_path)
+        cursor = conn.cursor()
+        
+        # Ensure user exists
+        cursor.execute("SELECT id FROM users WHERE email = ?", (mock_email,))
+        if not cursor.fetchone():
+            hashed = auth.get_password_hash("password")
+            cursor.execute(
+                "INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)",
+                (mock_id, mock_email, hashed, role, datetime.datetime.utcnow().isoformat())
+            )
+            conn.commit()
+            
+        conn.close()
+        
+        token = auth.create_access_token({"sub": mock_id, "role": role})
+        return {"access_token": token, "token_type": "bearer", "role": role}
+
+    @app.post("/api/dev/nuke-and-seed")
+    def dev_nuke_and_seed():
+        """Wipes the database and populates it with a rich test scenario."""
+        db_path = agent.DATA_DIR / "tutor.db"
+        conn = db.get_db(db_path)
+        
+        # Nuke
+        tables = ["teachers", "inquiries", "matches", "leave_requests", "faqs", "users"]
+        for table in tables:
+            conn.execute(f"DELETE FROM {table}")
+        
+        # Seed Teachers
+        conn.execute("INSERT INTO teachers (id, name, subjects, levels, availability, rate, capacity, active_matches) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            ("t1", "Alice Expert", db.to_json(["Math", "Physics"]), db.to_json(["High School"]), db.to_json(["monday 4pm", "tuesday 4pm"]), "$50/hr", 5, 0))
+        conn.execute("INSERT INTO teachers (id, name, subjects, levels, availability, rate, capacity, active_matches) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            ("t2", "Bob Beginner", db.to_json(["English"]), db.to_json(["Middle School"]), db.to_json(["wednesday 5pm", "thursday 5pm"]), "$40/hr", 3, 0))
+            
+        # Seed Inquiries
+        conn.execute("INSERT INTO inquiries (id, parent_name, student_name, subject, level, status) VALUES (?, ?, ?, ?, ?, ?)",
+            ("i1", "Carol Parent", "Dave Student", "Math", "High School", "need_teacher"))
+            
+        # Seed Admin User
+        admin_hash = auth.get_password_hash("password")
+        conn.execute("INSERT INTO users (id, email, password_hash, role) VALUES (?, ?, ?, ?)",
+            ("dev_admin_123", "dev_admin@example.com", admin_hash, "admin"))
+            
+        conn.commit()
+        conn.close()
+        return {"status": "success", "message": "Database nuked and seeded."}

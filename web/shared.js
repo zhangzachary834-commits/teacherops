@@ -431,3 +431,118 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
+
+/* ---------------------------------------------------
+   DEV TOOLS WIDGET
+--------------------------------------------------- */
+function initDevTools() {
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if (!isLocalhost) return;
+
+  const widget = document.createElement('div');
+  widget.id = 'dev-tools-widget';
+  widget.className = 'collapsed';
+  
+  widget.innerHTML = `
+    <div id="dev-tools-header">
+      <span>🛠️ Dev Tools</span>
+      <span id="dev-tools-toggle" style="font-size:16px;">▲</span>
+    </div>
+    <hr />
+    <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">Impersonate</div>
+    <div class="dev-btn-group">
+      <button class="secondary" id="dev-imp-admin">Admin</button>
+      <button class="secondary" id="dev-imp-teacher">Teacher</button>
+      <button class="secondary" id="dev-imp-parent">Parent</button>
+    </div>
+    <hr />
+    <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">State & DB</div>
+    <button class="secondary" id="dev-fill-data">✨ Fill Mock Data</button>
+    <button style="background:var(--danger);" id="dev-nuke-seed">⚠️ Nuke & Seed DB</button>
+  `;
+
+  document.body.appendChild(widget);
+
+  // Toggle Collapse
+  document.getElementById('dev-tools-header').addEventListener('click', () => {
+    const isCollapsed = widget.classList.toggle('collapsed');
+    document.getElementById('dev-tools-toggle').textContent = isCollapsed ? '▲' : '▼';
+  });
+
+  // Impersonate Function
+  async function impersonate(role) {
+    try {
+      const res = await fetch(`/api/dev/impersonate?role=${role}`, { method: 'POST' });
+      if (!res.ok) throw new Error("Impersonation failed");
+      const data = await res.json();
+      localStorage.setItem("token", data.access_token);
+      localStorage.setItem("role", data.role);
+      
+      // Redirect based on role
+      if (role === 'admin') window.location.href = '/admin.html';
+      else if (role === 'teacher') window.location.href = '/teachers.html';
+      else window.location.href = '/parents.html';
+      
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  document.getElementById('dev-imp-admin').addEventListener('click', () => impersonate('admin'));
+  document.getElementById('dev-imp-teacher').addEventListener('click', () => impersonate('teacher'));
+  document.getElementById('dev-imp-parent').addEventListener('click', () => impersonate('parent'));
+
+  // Nuke & Seed Function
+  document.getElementById('dev-nuke-seed').addEventListener('click', async () => {
+    if (!confirm("Are you sure? This will wipe the database and re-seed it!")) return;
+    try {
+      const res = await fetch('/api/dev/nuke-and-seed', { method: 'POST' });
+      if (!res.ok) throw new Error("Failed to nuke and seed");
+      alert("Database nuked and seeded! Refreshing...");
+      window.location.reload();
+    } catch (e) {
+      alert(e.message);
+    }
+  });
+
+  // Fill Mock Data Function
+  document.getElementById('dev-fill-data').addEventListener('click', () => {
+    const mockData = {
+      name: "Mock Dev User",
+      parent_name: "Mock Parent",
+      student_name: "Mock Student",
+      email: "mock_" + Math.floor(Math.random()*1000) + "@example.com",
+      password: "password",
+      subjects: "Math, Physics",
+      levels: "High School, AP",
+      availability: "Monday 5pm, Thursday 6pm",
+      rate: "$60/hr",
+      contact: "mock@example.com / 555-0101",
+      subject: "Math",
+      level: "High School",
+      frequency: "Twice a week",
+      raw_message: "This is a mock message automatically filled by dev tools. I am looking for a tutor for my child.",
+      reason: "Sick leave",
+      class_date: "Next Tuesday 5pm"
+    };
+
+    document.querySelectorAll('input:not([type="hidden"]), textarea').forEach(input => {
+      const name = input.name || input.id;
+      if (!name) return;
+      
+      let matchedKey = Object.keys(mockData).find(k => name.toLowerCase().includes(k.toLowerCase()));
+      if (matchedKey) {
+        input.value = mockData[matchedKey];
+      }
+    });
+    
+    // Attempt to select an option for selects
+    document.querySelectorAll('select').forEach(select => {
+      if (select.options.length > 1) {
+        select.selectedIndex = 1;
+      }
+    });
+  });
+}
+
+document.addEventListener("DOMContentLoaded", initDevTools);
