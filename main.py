@@ -15,7 +15,7 @@ app = FastAPI(title="Tutor Coordination Agent API")
 db.init_db(agent.DATA_DIR / "tutor.db")
 
 # DEV MODE FLAG - strictly disables dev tools in production
-DEV_MODE = os.environ.get("ENVIRONMENT", "dev") != "production"
+DEV_MODE = os.environ.get("ENVIRONMENT", "").lower() == "dev"
 
 WEB_DIR = os.path.join(os.path.dirname(__file__), "web")
 
