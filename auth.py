@@ -1,5 +1,6 @@
 import os
 import jwt
+import secrets
 from datetime import datetime, timedelta
 import bcrypt
 from fastapi import HTTPException, status, Depends
@@ -8,7 +9,7 @@ import db
 from pathlib import Path
 from agent import DATA_DIR
 
-SECRET_KEY = os.environ.get("JWT_SECRET", "super-secret-key-change-in-prod")
+SECRET_KEY = os.environ.get("JWT_SECRET") or secrets.token_hex(32)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 
