@@ -135,7 +135,7 @@ def get_state(current_user: dict = Depends(auth.get_current_user)):
         "profile_id": profile_id,
     }
 @app.get("/api/matches")
-def get_matches(inquiry_id: str):
+def get_matches(inquiry_id: str, current_user: dict = Depends(auth.get_current_user)):
     if not inquiry_id:
         raise HTTPException(status_code=400, detail="Missing inquiry_id.")
     return agent.find_teacher_matches(inquiry_id)
