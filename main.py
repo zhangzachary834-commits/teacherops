@@ -25,7 +25,12 @@ def read_root():
 
 @app.get("/{page}.html")
 def read_page(page: str):
-    file_path = os.path.join(WEB_DIR, f"{page}.html")
+    file_path = os.path.abspath(os.path.join(WEB_DIR, f"{page}.html"))
+    web_dir_abs = os.path.abspath(WEB_DIR)
+
+    if not file_path.startswith(web_dir_abs + os.sep):
+        raise HTTPException(status_code=404, detail="Page not found")
+
     if os.path.exists(file_path):
         with open(file_path, "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read())

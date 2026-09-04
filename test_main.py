@@ -9,3 +9,9 @@ def test_api_state_requires_auth(client: TestClient):
     # Depending on auth implementation, it might redirect or return 401/403
     response = client.get("/api/state")
     assert response.status_code in [401, 403, 500] # Usually 401 if unauthorized, 500 if missing context but let's check
+
+def test_path_traversal_prevention(client: TestClient):
+    # Attempt to traverse outside the web directory
+    # Route expects .html suffix, so use ..%2F..%2Fmain.html
+    response = client.get("/..%2F..%2Fmain.html")
+    assert response.status_code == 404
