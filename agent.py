@@ -1130,31 +1130,57 @@ def needs_followup(row: dict, older_than_days: int) -> bool:
     return last_date <= date.today() - timedelta(days=older_than_days)
 
 
+def get_needs_followup_records(table: str, older_than_days: int) -> list[dict]:
+    """Fetch records that need followup directly using SQL."""
+    cutoff_date = (date.today() - timedelta(days=older_than_days)).isoformat()
+    with DATA_LOCK:
+        db_path = DATA_DIR / "tutor.db"
+        conn = db.get_db(db_path)
+        cursor = conn.cursor()
+        query = f"""
+            SELECT * FROM {table}
+            WHERE (status IS NULL OR status NOT IN ('converted', 'not_converted', 'closed'))
+            AND (
+                COALESCE(NULLIF(last_contacted, ''), NULLIF(created_at, '')) IS NULL
+                OR date(COALESCE(NULLIF(last_contacted, ''), NULLIF(created_at, ''))) IS NULL
+                OR date(COALESCE(NULLIF(last_contacted, ''), NULLIF(created_at, ''))) <= ?
+            )
+        """
+        cursor.execute(query, (cutoff_date,))
+        rows = cursor.fetchall()
+
+        result = []
+        for row in rows:
+            d = dict(row)
+            if table == "inquiries" and "availability" in d and d["availability"]:
+                d["availability"] = db.from_json(d["availability"])
+            result.append(d)
+        return result
+
+
 def list_followups(older_than_days: int = 2) -> list[dict]:
     """List open inquiries, matches, and leave requests that need attention."""
 
-    inquiries = read_records(INQUIRIES_TABLE)
-    matches = read_records(MATCHES_TABLE)
+    inquiries = get_needs_followup_records(INQUIRIES_TABLE, older_than_days)
+    matches = get_needs_followup_records(MATCHES_TABLE, older_than_days)
     leave_requests = read_records(LEAVE_REQUESTS_TABLE)
     items = []
     for inquiry in inquiries:
-        if needs_followup(inquiry, older_than_days):
-            items.append({
-                "type": "inquiry",
-                "id": inquiry["id"],
-                "name": inquiry.get("parent_name", ""),
-                "status": inquiry.get("status", ""),
-                "next_action": inquiry.get("next_action", ""),
-            })
+        items.append({
+            "type": "inquiry",
+            "id": inquiry["id"],
+            "name": inquiry.get("parent_name", ""),
+            "status": inquiry.get("status", ""),
+            "next_action": inquiry.get("next_action", ""),
+        })
     for match in matches:
-        if needs_followup(match, older_than_days):
-            items.append({
-                "type": "match",
-                "id": match["id"],
-                "name": f"{match.get('parent_name', '')} / {match.get('teacher_name', '')}",
-                "status": match.get("status", ""),
-                "next_action": match.get("next_action", ""),
-            })
+        items.append({
+            "type": "match",
+            "id": match["id"],
+            "name": f"{match.get('parent_name', '')} / {match.get('teacher_name', '')}",
+            "status": match.get("status", ""),
+            "next_action": match.get("next_action", ""),
+        })
     for request in leave_requests:
         if request.get("status") == "closed":
             continue
