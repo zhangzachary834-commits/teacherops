@@ -152,6 +152,9 @@ class TeacherCreate(BaseModel):
 
 @app.post("/api/teachers")
 def add_teacher(t: TeacherCreate, current_user: dict = Depends(auth.get_current_user)):
+    if current_user["role"] not in ["admin", "teacher"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     res = agent.add_teacher(
         t.name, t.subjects, t.levels, t.availability,
         t.rate, t.capacity, t.contact, t.notes
