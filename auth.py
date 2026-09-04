@@ -5,7 +5,6 @@ import bcrypt
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import db
-from pathlib import Path
 from agent import DATA_DIR
 
 SECRET_KEY = os.environ.get("JWT_SECRET", "super-secret-key-change-in-prod")
