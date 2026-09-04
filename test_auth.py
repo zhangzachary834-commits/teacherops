@@ -21,3 +21,16 @@ def test_create_and_decode_access_token():
     assert decoded["sub"] == "user_123"
     assert decoded["role"] == "admin"
     assert "exp" in decoded
+
+def test_get_current_user_invalid_token():
+    from fastapi.security import HTTPAuthorizationCredentials
+    from fastapi import HTTPException
+
+    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="invalid.token.string")
+
+    with pytest.raises(HTTPException) as exc_info:
+        auth.get_current_user(credentials)
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail == "Could not validate credentials"
+    assert exc_info.value.headers == {"WWW-Authenticate": "Bearer"}
