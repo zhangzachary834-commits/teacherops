@@ -100,25 +100,24 @@ def get_state(current_user: dict = Depends(auth.get_current_user)):
     role = current_user["role"]
     profile_id = current_user.get("profile_id")
     
-    all_teachers = [t for t in agent.read_records(agent.TEACHERS_TABLE) if t.get("status") != "archived"]
-    all_inquiries = [i for i in agent.read_records(agent.INQUIRIES_TABLE) if i.get("status") != "archived"]
-    all_matches = [m for m in agent.read_records(agent.MATCHES_TABLE) if m.get("status") != "archived"]
-    all_leaves = [l for l in agent.read_records(agent.LEAVE_REQUESTS_TABLE) if l.get("status") != "archived"]
-    
     if role in ["admin", "developer"]:
-        teachers = all_teachers
-        inquiries = all_inquiries
-        matches = all_matches
-        leaves = all_leaves
+        teachers = agent.read_records_filtered(agent.TEACHERS_TABLE, status=("!=", "archived"))
+        inquiries = agent.read_records_filtered(agent.INQUIRIES_TABLE, status=("!=", "archived"))
+        matches = agent.read_records_filtered(agent.MATCHES_TABLE, status=("!=", "archived"))
+        leaves = agent.read_records_filtered(agent.LEAVE_REQUESTS_TABLE, status=("!=", "archived"))
     elif role == "teacher":
-        teachers = [t for t in all_teachers if t["id"] == profile_id]
-        inquiries = [i for i in all_inquiries if i["status"] == "need_teacher"]
-        matches = [m for m in all_matches if m["teacher_id"] == profile_id]
+        teachers = agent.read_records_filtered(agent.TEACHERS_TABLE, id=profile_id, status=("!=", "archived"))
+        inquiries = agent.read_records_filtered(agent.INQUIRIES_TABLE, status="need_teacher")
+        matches = agent.read_records_filtered(agent.MATCHES_TABLE, teacher_id=profile_id, status=("!=", "archived"))
+
+        all_leaves = agent.read_records_filtered(agent.LEAVE_REQUESTS_TABLE, status=("!=", "archived"))
         leaves = [l for l in all_leaves if l.get("teacher_id") == profile_id]
     elif role == "parent":
         teachers = []
-        inquiries = [i for i in all_inquiries if i["id"] == profile_id]
-        matches = [m for m in all_matches if m["inquiry_id"] == profile_id]
+        inquiries = agent.read_records_filtered(agent.INQUIRIES_TABLE, id=profile_id, status=("!=", "archived"))
+        matches = agent.read_records_filtered(agent.MATCHES_TABLE, inquiry_id=profile_id, status=("!=", "archived"))
+
+        all_leaves = agent.read_records_filtered(agent.LEAVE_REQUESTS_TABLE, status=("!=", "archived"))
         leaves = [l for l in all_leaves if l.get("inquiry_id") == profile_id]
     else:
         teachers, inquiries, matches, leaves = [], [], [], []

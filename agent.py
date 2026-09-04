@@ -135,6 +135,64 @@ def ensure_data_files() -> None:
 import db
 import sqlite3
 
+
+def read_records_filtered(table: str, **kwargs) -> list[dict]:
+    """Read records with SQL filtering to improve performance."""
+    with DATA_LOCK:
+        db_path = DATA_DIR / "tutor.db"
+        conn = db.get_db(db_path)
+        table_name = table
+
+        where_clauses = []
+        params = []
+        for k, v in kwargs.items():
+            if isinstance(v, tuple) and v[0] == "!=":
+                where_clauses.append(f"({k} != ? OR {k} IS NULL)")
+                params.append(v[1])
+            else:
+                where_clauses.append(f"{k} = ?")
+                params.append(v)
+
+        query = f"SELECT * FROM {table_name}"
+        if where_clauses:
+            query += " WHERE " + " AND ".join(where_clauses)
+
+        try:
+            cursor = conn.cursor()
+
+            # Auto-populate FAQs if empty (matches read_records behavior)
+            if table_name == "faqs":
+                cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    write_records(table, default_faq_records())
+
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+
+            result = []
+            for row in rows:
+                d = dict(row)
+                # Deserialize JSON list fields depending on table
+                if table_name == "teachers":
+                    d["subjects"] = db.from_json(d.get("subjects") or "[]")
+                    d["levels"] = db.from_json(d.get("levels") or "[]")
+                    d["availability"] = db.from_json(d.get("availability") or "[]")
+                    d["google_doc_updated"] = False
+                elif table_name == "inquiries":
+                    d["availability"] = db.from_json(d.get("availability") or "[]")
+                elif table_name == "faqs":
+                    d["keywords"] = db.from_json(d.get("keywords") or "[]")
+
+                # google_doc_updated boolean
+                if table_name == "leave_requests" and "google_doc_updated" in d:
+                    d["google_doc_updated"] = bool(d.get("google_doc_updated"))
+
+                result.append(d)
+            return result
+        finally:
+            conn.close()
+
 def read_records(table: str) -> list[dict]:
     """Read one of the agent's tables from SQLite and format it as a list of dicts."""
     with DATA_LOCK:
