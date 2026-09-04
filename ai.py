@@ -1,5 +1,4 @@
 import os
-import json
 import anthropic
 
 # Initialize client using standard environment variable ANTHROPIC_API_KEY
