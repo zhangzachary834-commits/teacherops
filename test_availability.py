@@ -72,6 +72,47 @@ class AvailabilityOverlapTests(unittest.TestCase):
 
         self.assertGreater(minutes, 0)
 
+    def test_overlap_minutes_no_overlap_same_day(self):
+        minutes = availability.overlap_minutes(
+            ["tuesday 8am-10am"],
+            ["tuesday 1pm-3pm"],
+        )
+
+        self.assertEqual(minutes, 0)
+
+    def test_overlap_minutes_different_days(self):
+        minutes = availability.overlap_minutes(
+            ["monday"],
+            ["tuesday"],
+        )
+
+        self.assertEqual(minutes, 0)
+
+    def test_overlap_minutes_empty_lists(self):
+        self.assertEqual(availability.overlap_minutes([], ["monday"]), 0)
+        self.assertEqual(availability.overlap_minutes(["monday"], []), 0)
+        self.assertEqual(availability.overlap_minutes([], []), 0)
+
+    def test_overlap_minutes_multiple_days(self):
+        minutes = availability.overlap_minutes(
+            ["tuesday 8am-10am", "wednesday 1pm-2pm"],
+            ["tuesday 9am-11am", "wednesday 1:30pm-3pm"],
+        )
+
+        # Tuesday: 9am-10am (60 minutes)
+        # Wednesday: 1:30pm-2pm (30 minutes)
+        self.assertEqual(minutes, 90)
+
+    def test_overlap_minutes_exact_duplicates(self):
+        minutes = availability.overlap_minutes(
+            ["tuesday 8am-10am", "tuesday 8am-10am"],
+            ["tuesday 9am-11am", "tuesday 9am-11am"],
+        )
+
+        # Tuesday: 9am-10am (60 minutes)
+        # Duplicate entries should not be double counted
+        self.assertEqual(minutes, 60)
+
     def test_weekend_expands_to_both_days(self):
         slots = availability.parse_availability(["weekend"])
 
