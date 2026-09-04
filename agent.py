@@ -135,6 +135,40 @@ def ensure_data_files() -> None:
 import db
 import sqlite3
 
+
+def read_record_by_id(table: str, record_id: str) -> dict:
+    """Read a single record by ID from SQLite and format it as a dict."""
+    if not record_id:
+        return {}
+    with DATA_LOCK:
+        db_path = DATA_DIR / "tutor.db"
+        conn = db.get_db(db_path)
+        table_name = table
+        try:
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT * FROM {table_name} WHERE id = ?", (record_id,))
+            row = cursor.fetchone()
+            if not row:
+                return {}
+            d = dict(row)
+            if table_name == "teachers":
+                d["subjects"] = db.from_json(d["subjects"])
+                d["levels"] = db.from_json(d["levels"])
+                d["availability"] = db.from_json(d["availability"])
+                d["google_doc_updated"] = False
+            elif table_name == "inquiries":
+                d["availability"] = db.from_json(d["availability"])
+            elif table_name == "faqs":
+                d["keywords"] = db.from_json(d["keywords"])
+            elif table_name == "leave_requests":
+                d["google_doc_updated"] = bool(d["google_doc_updated"])
+            return d
+        except sqlite3.OperationalError:
+            db.init_db(db_path)
+            return read_record_by_id(table, record_id)
+        finally:
+            conn.close()
+
 def read_records(table: str) -> list[dict]:
     """Read one of the agent's tables from SQLite and format it as a list of dicts."""
     with DATA_LOCK:
@@ -1173,13 +1207,9 @@ def list_followups(older_than_days: int = 2) -> list[dict]:
 def draft_message(kind: str, match_id: str = "", inquiry_id: str = "", teacher_id: str = "") -> str:
     """Draft a human-approved WeChat-style message for common coordination moments."""
 
-    inquiries = read_records(INQUIRIES_TABLE)
-    teachers = read_records(TEACHERS_TABLE)
-    matches = read_records(MATCHES_TABLE)
-
-    match = find_by_id(matches, match_id) if match_id else {}
-    inquiry = find_by_id(inquiries, inquiry_id or match.get("inquiry_id", "")) if (inquiry_id or match.get("inquiry_id")) else {}
-    teacher = find_by_id(teachers, teacher_id or match.get("teacher_id", "")) if (teacher_id or match.get("teacher_id")) else {}
+    match = read_record_by_id(MATCHES_TABLE, match_id) if match_id else {}
+    inquiry = read_record_by_id(INQUIRIES_TABLE, inquiry_id or match.get("inquiry_id", "")) if (inquiry_id or match.get("inquiry_id")) else {}
+    teacher = read_record_by_id(TEACHERS_TABLE, teacher_id or match.get("teacher_id", "")) if (teacher_id or match.get("teacher_id")) else {}
 
     parent = inquiry.get("parent_name", "there")
     student = inquiry.get("student_name") or "your student"
