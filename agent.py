@@ -135,8 +135,13 @@ def ensure_data_files() -> None:
 import db
 import sqlite3
 
+ALLOWED_TABLES = {"teachers", "inquiries", "matches", "leave_requests", "faqs", "users", "admin_whitelist"}
+
 def read_records(table: str) -> list[dict]:
     """Read one of the agent's tables from SQLite and format it as a list of dicts."""
+    if table not in ALLOWED_TABLES:
+        raise ValueError(f"Invalid table name: {table}")
+
     with DATA_LOCK:
         db_path = DATA_DIR / "tutor.db"
         conn = db.get_db(db_path)
@@ -180,6 +185,9 @@ def read_records(table: str) -> list[dict]:
 
 def write_records(table: str, data: list[dict]) -> None:
     """Write a list of dicts back to SQLite (replaces the table content)."""
+    if table not in ALLOWED_TABLES:
+        raise ValueError(f"Invalid table name: {table}")
+
     with DATA_LOCK:
         db_path = DATA_DIR / "tutor.db"
         conn = db.get_db(db_path)

@@ -181,3 +181,14 @@ class TutorCoordinationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+def test_sql_injection_prevention():
+    """Test that invalid table names raise an error and prevent SQL injection."""
+    import pytest
+    from agent import read_records, write_records
+
+    with pytest.raises(ValueError, match="Invalid table name: teachers; DROP TABLE"):
+        read_records("teachers; DROP TABLE users; --")
+
+    with pytest.raises(ValueError, match="Invalid table name: inquiries;"):
+        write_records("inquiries; DROP TABLE faqs; --", [])
