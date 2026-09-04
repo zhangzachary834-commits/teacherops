@@ -9,3 +9,50 @@ def test_api_state_requires_auth(client: TestClient):
     # Depending on auth implementation, it might redirect or return 401/403
     response = client.get("/api/state")
     assert response.status_code in [401, 403, 500] # Usually 401 if unauthorized, 500 if missing context but let's check
+
+import auth
+from main import app
+
+def test_add_teacher_authorized(client: TestClient):
+    app.dependency_overrides[auth.get_current_user] = lambda: {"role": "admin", "id": "admin_1"}
+
+    response = client.post(
+        "/api/teachers",
+        json={
+            "name": "Jane Doe",
+            "subjects": "Math",
+            "levels": "High School",
+            "availability": "Mondays",
+            "rate": "50",
+            "capacity": 5,
+            "contact": "jane@example.com",
+            "notes": "Good teacher"
+        }
+    )
+
+    app.dependency_overrides = {}
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Jane Doe"
+
+def test_add_teacher_unauthorized(client: TestClient):
+    app.dependency_overrides[auth.get_current_user] = lambda: {"role": "parent", "id": "parent_1"}
+
+    response = client.post(
+        "/api/teachers",
+        json={
+            "name": "Jane Doe",
+            "subjects": "Math",
+            "levels": "High School",
+            "availability": "Mondays",
+            "rate": "50",
+            "capacity": 5,
+            "contact": "jane@example.com",
+            "notes": "Good teacher"
+        }
+    )
+
+    app.dependency_overrides = {}
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Not authorized"
