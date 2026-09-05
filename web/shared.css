@@ -546,10 +546,11 @@ main.layout-home {
   padding: 16px;
   box-shadow: var(--shadow-lg), var(--shadow-glow);
   z-index: 9999;
-  width: 280px;
+  width: 310px;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   transform: translateY(0);
 }
@@ -571,23 +572,51 @@ main.layout-home {
   user-select: none;
 }
 
+.dev-tools-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.dev-tools-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dev-tools-content::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 2px;
+}
+
+.dev-group-title {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
 #dev-tools-widget button {
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: 6px 8px;
+  font-size: 11px;
   width: 100%;
 }
 
 #dev-tools-widget .dev-btn-group {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 #dev-tools-widget .dev-btn-group button {
   flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #dev-tools-widget hr {
   border: none;
   border-top: 1px solid var(--panel-border);
-  margin: 4px 0;
+  margin: 2px 0;
 }

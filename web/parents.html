@@ -36,10 +36,10 @@
           <form class="panel-body" id="inquiryForm">
             <div class="grid-2">
               <label>Parent
-                <input name="parent_name" required placeholder="Parent Wang">
+                <input name="parent_name" required placeholder="Carol">
               </label>
               <label>Student
-                <input name="student_name" placeholder="Eric">
+                <input name="student_name" placeholder="George">
               </label>
             </div>
             <textarea name="raw_message" placeholder="Paste your message here, e.g. My son is grade 8 and needs math twice a week, Tuesday and Friday after 6."></textarea>
@@ -74,7 +74,7 @@
             <h2>Request Temporary Leave</h2>
           </div>
           <form class="panel-body" id="leaveForm">
-            <textarea name="raw_message" placeholder="Example: Eric needs to take leave this Friday because of travel."></textarea>
+            <textarea name="raw_message" placeholder="Example: George needs to take leave this Friday because of travel."></textarea>
             <button type="submit">Submit Leave Request</button>
           </form>
         </div>
@@ -133,7 +133,9 @@
         method: "POST",
         body: JSON.stringify(formData(event.currentTarget))
       });
-      const matched = result.matched && result.matched.length ? `Topic: ${result.topic}\n\n` : "";
+      const matched = result.matched && result.matched.length ? `Topic: ${result.topic}
+
+` : "";
       document.querySelector("#faqOutput").textContent = `${matched}${result.reply}`;
       setStatus("Suggested reply ready");
     });

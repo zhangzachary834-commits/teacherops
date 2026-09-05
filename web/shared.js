@@ -29,6 +29,7 @@ const appState = new Proxy(rawState, {
     return true;
   }
 });
+
 function setStatus(text, isError = false) {
   const statusEl = document.querySelector("#status");
   if (!statusEl) return;
@@ -117,6 +118,119 @@ function formatDate(isoString) {
   }
 }
 
+/* ---------------------------------------------------
+   NAME SANITIZATION & AUTO-FILL HELPER
+--------------------------------------------------- */
+function cleanName(rawName) {
+  if (!rawName) return "";
+  let name = String(rawName).trim();
+  // Strip leading/trailing role labels like "Parent", "Student", "Teacher", "User"
+  name = name.replace(/^(parent|student|teacher|user)\s+/i, "");
+  name = name.replace(/\s+(parent|student|teacher|user)$/i, "");
+  return name.trim();
+}
+
+function autoFillForms(data) {
+  if (!data) return;
+  
+  const role = data.role || localStorage.getItem("role") || "";
+  const profile = data.user_profile || {};
+  
+  // 1. Resolve Parent and Student Name (clean, without role labels)
+  let parentName = cleanName(profile.parent_name || "");
+  let studentName = cleanName(profile.student_name || "");
+  
+  if (!parentName || !studentName) {
+    if (data.inquiries && data.inquiries.length > 0) {
+      const inq = data.inquiries[0];
+      if (!parentName && inq.parent_name) parentName = cleanName(inq.parent_name);
+      if (!studentName && inq.student_name) studentName = cleanName(inq.student_name);
+    }
+  }
+
+  if (!parentName) parentName = cleanName(localStorage.getItem("saved_parent_name") || "");
+  if (!studentName) studentName = cleanName(localStorage.getItem("saved_student_name") || "");
+
+  // Auto-fill New Inquiry Form (#inquiryForm on parents.html)
+  const inquiryForm = document.querySelector("#inquiryForm");
+  if (inquiryForm) {
+    const parentInput = inquiryForm.querySelector("input[name='parent_name']");
+    const studentInput = inquiryForm.querySelector("input[name='student_name']");
+    
+    if (parentInput) {
+      const currentVal = cleanName(parentInput.value.trim());
+      if (!currentVal || currentVal.toLowerCase() === "wang" || currentVal.toLowerCase() === "parent wang" || parentInput.dataset.autofilled === "true") {
+        if (parentName) {
+          parentInput.value = cleanName(parentName);
+          parentInput.dataset.autofilled = "true";
+        }
+      }
+    }
+    
+    if (studentInput) {
+      const currentVal = cleanName(studentInput.value.trim());
+      if (!currentVal || currentVal.toLowerCase() === "eric" || currentVal.toLowerCase() === "student eric" || studentInput.dataset.autofilled === "true") {
+        if (studentName) {
+          studentInput.value = cleanName(studentName);
+          studentInput.dataset.autofilled = "true";
+        }
+      }
+    }
+  }
+
+  // Update Leave Request Form (#leaveForm) placeholder if student name is known
+  const leaveInput = document.querySelector("#leaveForm textarea[name='raw_message']");
+  if (leaveInput && studentName) {
+    leaveInput.placeholder = `Example: ${cleanName(studentName)} needs to take leave this Friday because of travel.`;
+  }
+
+  // 2. Resolve Teacher Name & Profile
+  let teacherName = cleanName(profile.name || "");
+  if (!teacherName && data.teachers && data.teachers.length > 0 && role === "teacher") {
+    teacherName = cleanName(data.teachers[0].name || "");
+  }
+  if (!teacherName) teacherName = cleanName(localStorage.getItem("saved_teacher_name") || "");
+
+  const teacherForm = document.querySelector("#teacherForm");
+  if (teacherForm && teacherName && (role === "teacher" || !role)) {
+    const nameInput = teacherForm.querySelector("input[name='name']");
+    if (nameInput) {
+      const currentVal = cleanName(nameInput.value.trim());
+      if (!currentVal || nameInput.dataset.autofilled === "true") {
+        nameInput.value = cleanName(teacherName);
+        nameInput.dataset.autofilled = "true";
+        
+        const teacher = data.teachers && data.teachers.find(t => cleanName(t.name || "").toLowerCase() === teacherName.toLowerCase());
+        if (teacher) {
+          if (teacherForm.elements["subjects"] && !teacherForm.elements["subjects"].value) {
+            teacherForm.elements["subjects"].value = teacher.subjects ? (Array.isArray(teacher.subjects) ? teacher.subjects.join("; ") : teacher.subjects) : "";
+          }
+          if (teacherForm.elements["levels"] && !teacherForm.elements["levels"].value) {
+            teacherForm.elements["levels"].value = teacher.levels ? (Array.isArray(teacher.levels) ? teacher.levels.join("; ") : teacher.levels) : "";
+          }
+          if (teacherForm.elements["availability"] && !teacherForm.elements["availability"].value) {
+            teacherForm.elements["availability"].value = teacher.availability ? (Array.isArray(teacher.availability) ? teacher.availability.join("; ") : teacher.availability) : "";
+          }
+          if (teacherForm.elements["rate"] && !teacherForm.elements["rate"].value) {
+            teacherForm.elements["rate"].value = teacher.rate || "";
+          }
+          if (teacherForm.elements["capacity"] && teacherForm.elements["capacity"].value === "1" && teacher.capacity) {
+            teacherForm.elements["capacity"].value = teacher.capacity;
+          }
+        }
+      }
+    }
+  }
+
+  const teacherFilter = document.querySelector("#teacherFilter");
+  if (teacherFilter && teacherName && !teacherFilter.value) {
+    teacherFilter.value = cleanName(teacherName);
+    if (typeof window.renderPage === "function") {
+      window.renderPage();
+    }
+  }
+}
+
 async function loadState() {
   appState.data = await api("/api/state");
   const role = appState.data.role;
@@ -138,14 +252,20 @@ async function loadState() {
     if (banner) banner.remove();
   }
   
+  autoFillForms(appState.data);
   return appState.data;
 }
 
 async function submitJson(form, path, successText, onSuccess) {
   try {
+    const formValues = formData(form);
+    if (formValues.parent_name) localStorage.setItem("saved_parent_name", cleanName(formValues.parent_name));
+    if (formValues.student_name) localStorage.setItem("saved_student_name", cleanName(formValues.student_name));
+    if (formValues.name) localStorage.setItem("saved_teacher_name", cleanName(formValues.name));
+
     await api(path, {
       method: "POST",
-      body: JSON.stringify(formData(form))
+      body: JSON.stringify(formValues)
     });
     form.reset();
     await loadState();
@@ -425,6 +545,9 @@ document.addEventListener("DOMContentLoaded", () => {
         e.preventDefault();
         localStorage.removeItem("token");
         localStorage.removeItem("role");
+        localStorage.removeItem("saved_parent_name");
+        localStorage.removeItem("saved_student_name");
+        localStorage.removeItem("saved_teacher_name");
         window.location.href = "/login.html";
       });
       nav.appendChild(logoutBtn);
@@ -448,17 +571,38 @@ function initDevTools() {
       <span>🛠️ Dev Tools</span>
       <span id="dev-tools-toggle" style="font-size:16px;">▲</span>
     </div>
-    <hr />
-    <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">Impersonate</div>
-    <div class="dev-btn-group">
-      <button class="secondary" id="dev-imp-admin">Admin</button>
-      <button class="secondary" id="dev-imp-teacher">Teacher</button>
-      <button class="secondary" id="dev-imp-parent">Parent</button>
+    <div class="dev-tools-content">
+      <hr />
+      <div class="dev-group-title">👑 Admin Test Accounts</div>
+      <div class="dev-btn-group">
+        <button class="secondary" data-dev-acc="admin" title="dev_admin@example.com">Admin (Main)</button>
+        <button class="secondary" data-dev-acc="admin2" title="dev_admin2@example.com">Admin (Ops)</button>
+      </div>
+
+      <div class="dev-group-title">👨‍👩‍👧 Parent Test Accounts</div>
+      <div class="dev-btn-group">
+        <button class="secondary" data-dev-acc="parent_carol" title="Carol (George's Mom)">Parent Carol</button>
+        <button class="secondary" data-dev-acc="parent_wang" title="Wang (Eric's Dad)">Parent Wang</button>
+      </div>
+
+      <div class="dev-group-title">🎓 Student Test Accounts</div>
+      <div class="dev-btn-group">
+        <button class="secondary" data-dev-acc="student_dave" title="George (High School Math)">Student George</button>
+        <button class="secondary" data-dev-acc="student_eric" title="Eric (Grade 8 Math)">Student Eric</button>
+      </div>
+
+      <div class="dev-group-title">📚 Teacher Test Accounts</div>
+      <div class="dev-btn-group">
+        <button class="secondary" data-dev-acc="teacher_alice" title="Alice Chen (Math/Physics)">Teacher Alice</button>
+        <button class="secondary" data-dev-acc="teacher_bob" title="Bob Smith (English)">Teacher Bob</button>
+      </div>
+
+      <hr />
+      <div class="dev-group-title">State & DB</div>
+      <button class="secondary" id="dev-fill-data">✨ Fill Mock Form</button>
+      <button class="secondary" id="dev-restart-server">🔄 Restart Server</button>
+      <button style="background:var(--danger);" id="dev-nuke-seed">⚠️ Nuke & Seed DB</button>
     </div>
-    <hr />
-    <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">State & DB</div>
-    <button class="secondary" id="dev-fill-data">✨ Fill Mock Data</button>
-    <button style="background:var(--danger);" id="dev-nuke-seed">⚠️ Nuke & Seed DB</button>
   `;
 
   document.body.appendChild(widget);
@@ -469,32 +613,55 @@ function initDevTools() {
     document.getElementById('dev-tools-toggle').textContent = isCollapsed ? '▲' : '▼';
   });
 
-  // Impersonate Function
-  async function impersonate(role) {
+  // Test Account Switcher / Impersonator
+  async function impersonate(accountId) {
     try {
-      const res = await fetch(`/api/dev/impersonate?role=${role}`, { method: 'POST' });
-      if (!res.ok) throw new Error("Impersonation failed");
+      const res = await fetch(`/api/dev/impersonate?account_id=${encodeURIComponent(accountId)}`, { method: 'POST' });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Impersonation failed");
+      }
       const data = await res.json();
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("role", data.role);
       
       // Redirect based on role
-      if (role === 'admin') window.location.href = '/admin.html';
-      else if (role === 'teacher') window.location.href = '/teachers.html';
-      else window.location.href = '/parents.html';
-      
+      if (data.role === 'admin' || data.role === 'developer') {
+        window.location.href = '/admin.html';
+      } else if (data.role === 'teacher') {
+        window.location.href = '/teachers.html';
+      } else {
+        window.location.href = '/parents.html';
+      }
     } catch (e) {
-      alert(e.message);
+      alert("Dev login failed: " + e.message);
     }
   }
 
-  document.getElementById('dev-imp-admin').addEventListener('click', () => impersonate('admin'));
-  document.getElementById('dev-imp-teacher').addEventListener('click', () => impersonate('teacher'));
-  document.getElementById('dev-imp-parent').addEventListener('click', () => impersonate('parent'));
+  // Attach event listeners to all dev account buttons
+  widget.querySelectorAll('[data-dev-acc]').forEach(button => {
+    button.addEventListener('click', () => {
+      impersonate(button.dataset.devAcc);
+    });
+  });
+
+  // Restart Server Function
+  document.getElementById('dev-restart-server').addEventListener('click', async () => {
+    try {
+      const res = await fetch('/api/dev/restart', { method: 'POST' });
+      if (!res.ok) throw new Error("Failed to restart server");
+      setStatus("Server reloading...");
+      setTimeout(() => {
+        window.location.reload();
+      }, 700);
+    } catch (e) {
+      alert("Restart error: " + e.message);
+    }
+  });
 
   // Nuke & Seed Function
   document.getElementById('dev-nuke-seed').addEventListener('click', async () => {
-    if (!confirm("Are you sure? This will wipe the database and re-seed it!")) return;
+    if (!confirm("Are you sure? This will wipe the database and re-seed with clean dummy test data!")) return;
     try {
       const res = await fetch('/api/dev/nuke-and-seed', { method: 'POST' });
       if (!res.ok) throw new Error("Failed to nuke and seed");

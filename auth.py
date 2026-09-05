@@ -6,9 +6,9 @@ from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import db
 from pathlib import Path
-from agent import DATA_DIR
+import agent
 
-SECRET_KEY = os.environ.get("JWT_SECRET", "super-secret-key-change-in-prod")
+SECRET_KEY = os.environ.get("JWT_SECRET", "super-secret-key-change-in-prod-1234567890")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 
@@ -40,8 +40,8 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
-        # Fetch user from db
-        db_path = DATA_DIR / "tutor.db"
+        # Fetch user from active db
+        db_path = agent.DATA_DIR / "tutor.db"
         conn = db.get_db(db_path)
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
