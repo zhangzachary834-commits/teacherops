@@ -1,0 +1,141 @@
+name: Deploy TeacherOps to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "web/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare static site
+        env:
+          TEACHEROPS_API_BASE: ${{ vars.TEACHEROPS_API_BASE }}
+        shell: bash
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp -R web/. _site/
+          touch _site/.nojekyll
+
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          site = Path("_site")
+          static_targets = (
+              "home.html",
+              "index.html",
+              "login.html",
+              "register.html",
+              "parents.html",
+              "teachers.html",
+              "admin.html",
+              "shared.css",
+              "shared.js",
+          )
+
+          api_base = os.environ.get("TEACHEROPS_API_BASE", "").rstrip("/")
+          runtime = f"""window.TEACHEROPS_API_BASE = {json.dumps(api_base)};
+window.teacherOpsApiUrl = function(path) {{
+  const base = window.TEACHEROPS_API_BASE || "";
+  if (!base) {{
+    throw new Error(
+      "TeacherOps backend is not configured for this GitHub Pages deployment yet."
+    );
+  }}
+  return base + path;
+}};
+"""
+          (site / "runtime-config.js").write_text(runtime, encoding="utf-8")
+
+          for path in site.glob("*.html"):
+              text = path.read_text(encoding="utf-8")
+
+              # Project Pages lives at /teacherops/, unlike the local FastAPI
+              # server which serves these static files from /.
+              for target in static_targets:
+                  text = text.replace(f'href="/{target}"', f'href="./{target}"')
+                  text = text.replace(f"href='/{target}'", f"href='./{target}'")
+                  text = text.replace(f'src="/{target}"', f'src="./{target}"')
+                  text = text.replace(f"src='/{target}'", f"src='./{target}'")
+                  text = text.replace(f"url=/{target}", f"url=./{target}")
+
+              # Inject Pages-only runtime configuration without changing the
+              # local source files served by FastAPI.
+              marker = "</head>"
+              if marker in text:
+                  text = text.replace(
+                      marker,
+                      '  <script src="./runtime-config.js"></script>\n</head>',
+                      1,
+                  )
+
+              # Login/register currently call fetch() directly.
+              for endpoint in ("login", "register"):
+                  text = text.replace(
+                      f'fetch("/api/{endpoint}", {{',
+                      f'fetch(window.teacherOpsApiUrl("/api/{endpoint}"), {{',
+                  )
+
+              path.write_text(text, encoding="utf-8")
+
+          shared = site / "shared.js"
+          if shared.exists():
+              text = shared.read_text(encoding="utf-8")
+
+              # Shared API helper now targets the configured public FastAPI
+              # origin in Pages while source remains same-origin locally.
+              text = text.replace(
+                  "const response = await fetch(path, {",
+                  "const response = await fetch(window.teacherOpsApiUrl(path), {",
+                  1,
+              )
+
+              # Keep redirects inside the /teacherops/ project site.
+              for target in (
+                  "home.html",
+                  "login.html",
+                  "register.html",
+                  "parents.html",
+                  "teachers.html",
+                  "admin.html",
+              ):
+                  text = text.replace(f'"/{target}"', f'"./{target}"')
+                  text = text.replace(f"'/{target}'", f"'./{target}'")
+
+              shared.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
