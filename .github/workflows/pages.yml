@@ -60,17 +60,19 @@ jobs:
           )
 
           api_base = os.environ.get("TEACHEROPS_API_BASE", "").rstrip("/")
-          runtime = f"""window.TEACHEROPS_API_BASE = {json.dumps(api_base)};
-window.teacherOpsApiUrl = function(path) {{
-  const base = window.TEACHEROPS_API_BASE || "";
-  if (!base) {{
-    throw new Error(
-      "TeacherOps backend is not configured for this GitHub Pages deployment yet."
-    );
-  }}
-  return base + path;
-}};
-"""
+          runtime = "\n".join([
+              f"window.TEACHEROPS_API_BASE = {json.dumps(api_base)};",
+              "window.teacherOpsApiUrl = function(path) {",
+              '  const base = window.TEACHEROPS_API_BASE || "";',
+              "  if (!base) {",
+              "    throw new Error(",
+              '      "TeacherOps backend is not configured for this GitHub Pages deployment yet."',
+              "    );",
+              "  }",
+              "  return base + path;",
+              "};",
+              "",
+          ])
           (site / "runtime-config.js").write_text(runtime, encoding="utf-8")
 
           for path in site.glob("*.html"):
