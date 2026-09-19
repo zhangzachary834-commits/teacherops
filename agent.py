@@ -178,6 +178,39 @@ def read_records(table: str) -> list[dict]:
         finally:
             conn.close()
 
+
+def read_record(table: str, row_id: str) -> dict:
+    """Read a single record from SQLite by ID and format it."""
+    with DATA_LOCK:
+        db_path = DATA_DIR / "tutor.db"
+        conn = db.get_db(db_path)
+        try:
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT * FROM {table} WHERE id = ?", (row_id,))
+            row = cursor.fetchone()
+            if not row:
+                raise ValueError(f"No record found for id {row_id}.")
+
+            d = dict(row)
+            if table == "teachers":
+                d["subjects"] = db.from_json(d["subjects"])
+                d["levels"] = db.from_json(d["levels"])
+                d["availability"] = db.from_json(d["availability"])
+                d["google_doc_updated"] = False
+            elif table == "inquiries":
+                d["availability"] = db.from_json(d["availability"])
+            elif table == "faqs":
+                d["keywords"] = db.from_json(d["keywords"])
+            elif table == "leave_requests":
+                d["google_doc_updated"] = bool(d["google_doc_updated"])
+            return d
+        except sqlite3.OperationalError:
+            # Table might not exist yet, fallback to original behavior which initializes
+            rows = read_records(table)
+            return find_by_id(rows, row_id)
+        finally:
+            conn.close()
+
 def write_records(table: str, data: list[dict]) -> None:
     """Write a list of dicts back to SQLite (replaces the table content)."""
     with DATA_LOCK:
@@ -718,8 +751,7 @@ def find_teacher_matches(inquiry_id: str, limit: int = 5) -> list[dict]:
     """Rank teachers for an inquiry and return a compact explanation of each fit."""
 
     teachers = read_records(TEACHERS_TABLE)
-    inquiries = read_records(INQUIRIES_TABLE)
-    inquiry = find_by_id(inquiries, inquiry_id)
+    inquiry = read_record(INQUIRIES_TABLE, inquiry_id)
     scored = [score_teacher(teacher, inquiry) for teacher in teachers]
     
     # Check for specific request
