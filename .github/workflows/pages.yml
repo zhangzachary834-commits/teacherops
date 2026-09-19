@@ -96,15 +96,11 @@ window.teacherOpsApiUrl = function(path) {{
                   )
 
               # Login/register currently call fetch() directly.
-              text = text.replace(
-                  'fetch("/api/',
-                  'fetch(window.teacherOpsApiUrl("/api/',
-              )
-              # Close the helper call before the fetch options comma.
-              text = text.replace(
-                  '"), {\n          method:',
-                  '")), {\n          method:',
-              )
+              for endpoint in ("login", "register"):
+                  text = text.replace(
+                      f'fetch("/api/{endpoint}", {{',
+                      f'fetch(window.teacherOpsApiUrl("/api/{endpoint}"), {{',
+                  )
 
               path.write_text(text, encoding="utf-8")
 
