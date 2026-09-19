@@ -1,0 +1,94 @@
+name: Deploy TeacherOps to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "web/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare static site
+        shell: bash
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp -R web/. _site/
+          touch _site/.nojekyll
+
+          # The local FastAPI server serves these files from /, while a project
+          # Pages site is mounted at /teacherops/. Convert only frontend page
+          # and asset URLs in the deploy artifact; source files stay unchanged.
+          python3 - <<'PY'
+          from pathlib import Path
+
+          site = Path("_site")
+          static_targets = (
+              "home.html",
+              "index.html",
+              "login.html",
+              "register.html",
+              "parents.html",
+              "teachers.html",
+              "admin.html",
+              "shared.css",
+              "shared.js",
+          )
+
+          for path in site.glob("*.html"):
+              text = path.read_text(encoding="utf-8")
+              for target in static_targets:
+                  text = text.replace(f'href="/{target}"', f'href="./{target}"')
+                  text = text.replace(f"href='/{target}'", f"href='./{target}'")
+                  text = text.replace(f'src="/{target}"', f'src="./{target}"')
+                  text = text.replace(f"src='/{target}'", f"src='./{target}'")
+                  text = text.replace(f"url=/{target}", f"url=./{target}")
+              path.write_text(text, encoding="utf-8")
+
+          js = site / "shared.js"
+          if js.exists():
+              text = js.read_text(encoding="utf-8")
+              for target in (
+                  "home.html",
+                  "login.html",
+                  "register.html",
+                  "parents.html",
+                  "teachers.html",
+                  "admin.html",
+              ):
+                  text = text.replace(f'"/{target}"', f'"./{target}"')
+                  text = text.replace(f"'/{target}'", f"'./{target}'")
+              js.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
