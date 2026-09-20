@@ -137,6 +137,8 @@ import sqlite3
 
 def read_records(table: str) -> list[dict]:
     """Read one of the agent's tables from SQLite and format it as a list of dicts."""
+    if table not in RECORD_TYPES:
+        raise ValueError(f"Invalid table name: {table}")
     with DATA_LOCK:
         db_path = DATA_DIR / "tutor.db"
         conn = db.get_db(db_path)
@@ -181,6 +183,8 @@ def read_records(table: str) -> list[dict]:
 
 def read_record(table: str, row_id: str) -> dict:
     """Read a single record from SQLite by ID and format it."""
+    if table not in RECORD_TYPES:
+        raise ValueError(f"Invalid table name: {table}")
     with DATA_LOCK:
         db_path = DATA_DIR / "tutor.db"
         conn = db.get_db(db_path)
@@ -213,6 +217,8 @@ def read_record(table: str, row_id: str) -> dict:
 
 def write_records(table: str, data: list[dict]) -> None:
     """Write a list of dicts back to SQLite (replaces the table content)."""
+    if table not in RECORD_TYPES:
+        raise ValueError(f"Invalid table name: {table}")
     with DATA_LOCK:
         db_path = DATA_DIR / "tutor.db"
         conn = db.get_db(db_path)
