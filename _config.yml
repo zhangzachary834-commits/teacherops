@@ -1,0 +1,31 @@
+# GitHub Pages currently publishes from main:/ using the legacy branch source.
+# Keep the public artifact narrow: only the root landing pages + web/ frontend.
+title: TeacherOps
+exclude:
+  - .claude
+  - .github
+  - .DS_Store
+  - README.md
+  - __pycache__
+  - agent.py
+  - ai.py
+  - auth.py
+  - availability.py
+  - conftest.py
+  - data
+  - db.py
+  - docs
+  - launch.command
+  - main.py
+  - migrate_to_sqlite.py
+  - restart.command
+  - sandbox_venv
+  - test_agent.py
+  - test_auth.py
+  - test_availability.py
+  - test_db.py
+  - test_leave.py
+  - test_main.py
+  - update_html.py
+  - venv
+  - whitelist_admin.py
