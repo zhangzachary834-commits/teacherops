@@ -48,7 +48,7 @@ async function api(path, options = {}) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(path, {
+  const response = await fetch(window.teacherOpsApiUrl(path), {
     ...options,
     headers
   });
@@ -57,7 +57,7 @@ async function api(path, options = {}) {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     if (!window.location.pathname.includes("login.html") && !window.location.pathname.includes("register.html")) {
-      window.location.href = "/login.html";
+      window.location.href = "./login.html";
       return null;
     }
   }
@@ -529,11 +529,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const nav = document.querySelector(".site-nav");
   if (nav) {
     if (role !== "admin" && role !== "developer") {
-      const adminLink = nav.querySelector('a[href="/admin.html"]');
+      const adminLink = nav.querySelector('a[href="./admin.html"]');
       if (adminLink) adminLink.style.display = "none";
     }
     if (role === "parent") {
-      const teacherLink = nav.querySelector('a[href="/teachers.html"]');
+      const teacherLink = nav.querySelector('a[href="./teachers.html"]');
       if (teacherLink) teacherLink.style.display = "none";
     }
     if (token) {
@@ -548,7 +548,7 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.removeItem("saved_parent_name");
         localStorage.removeItem("saved_student_name");
         localStorage.removeItem("saved_teacher_name");
-        window.location.href = "/login.html";
+        window.location.href = "./login.html";
       });
       nav.appendChild(logoutBtn);
     }
@@ -616,7 +616,7 @@ function initDevTools() {
   // Test Account Switcher / Impersonator
   async function impersonate(accountId) {
     try {
-      const res = await fetch(`/api/dev/impersonate?account_id=${encodeURIComponent(accountId)}`, { method: 'POST' });
+      const res = await fetch(window.teacherOpsApiUrl(`/api/dev/impersonate?account_id=${encodeURIComponent(accountId)}`), { method: 'POST' });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.detail || "Impersonation failed");
@@ -627,11 +627,11 @@ function initDevTools() {
       
       // Redirect based on role
       if (data.role === 'admin' || data.role === 'developer') {
-        window.location.href = '/admin.html';
+        window.location.href = './admin.html';
       } else if (data.role === 'teacher') {
-        window.location.href = '/teachers.html';
+        window.location.href = './teachers.html';
       } else {
-        window.location.href = '/parents.html';
+        window.location.href = './parents.html';
       }
     } catch (e) {
       alert("Dev login failed: " + e.message);
@@ -648,7 +648,7 @@ function initDevTools() {
   // Restart Server Function
   document.getElementById('dev-restart-server').addEventListener('click', async () => {
     try {
-      const res = await fetch('/api/dev/restart', { method: 'POST' });
+      const res = await fetch(window.teacherOpsApiUrl('/api/dev/restart'), { method: 'POST' });
       if (!res.ok) throw new Error("Failed to restart server");
       setStatus("Server reloading...");
       setTimeout(() => {
@@ -663,7 +663,7 @@ function initDevTools() {
   document.getElementById('dev-nuke-seed').addEventListener('click', async () => {
     if (!confirm("Are you sure? This will wipe the database and re-seed with clean dummy test data!")) return;
     try {
-      const res = await fetch('/api/dev/nuke-and-seed', { method: 'POST' });
+      const res = await fetch(window.teacherOpsApiUrl('/api/dev/nuke-and-seed'), { method: 'POST' });
       if (!res.ok) throw new Error("Failed to nuke and seed");
       alert("Database nuked and seeded! Refreshing...");
       window.location.reload();

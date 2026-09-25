@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <title>Register - Tutor Coordination Agent</title>
-  <link rel="stylesheet" href="/shared.css">
+  <link rel="stylesheet" href="./shared.css">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="./runtime-config.js"></script>
 </head>
 <body>
   <div class="container">
@@ -34,7 +35,7 @@
         <div id="registerError" class="muted" style="color: red; margin-top: 8px;"></div>
         <div style="margin-top: 16px;">
           <button class="primary" id="registerBtn">Register</button>
-          <a href="/login.html" style="margin-left: 16px;">Already have an account? Login</a>
+          <a href="./login.html" style="margin-left: 16px;">Already have an account? Login</a>
         </div>
       </div>
     </div>
@@ -49,7 +50,7 @@
       errorDiv.textContent = "";
 
       try {
-        const res = await fetch("/api/register", {
+        const res = await fetch(window.teacherOpsApiUrl("/api/register"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password, role })
@@ -63,7 +64,7 @@
         }
         
         // Auto-login after register
-        const loginRes = await fetch("/api/login", {
+        const loginRes = await fetch(window.teacherOpsApiUrl("/api/login"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password })
@@ -75,11 +76,11 @@
         localStorage.setItem("role", loginData.role);
         
         if (loginData.role === "admin" || loginData.role === "developer") {
-          window.location.href = "/admin.html";
+          window.location.href = "./admin.html";
         } else if (loginData.role === "teacher") {
-          window.location.href = "/teachers.html";
+          window.location.href = "./teachers.html";
         } else {
-          window.location.href = "/parents.html";
+          window.location.href = "./parents.html";
         }
       } catch (err) {
         errorDiv.textContent = err.message;
