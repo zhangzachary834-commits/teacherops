@@ -1,11 +1,10 @@
 name: Deploy TeacherOps to GitHub Pages
 
+# The repository currently publishes Pages from the main branch directly.
+# Keep this artifact-based workflow available for a future switch to
+# Settings → Pages → Source: GitHub Actions, but do not let it fight the
+# active legacy Pages deployment on every push.
 on:
-  push:
-    branches: ["main"]
-    paths:
-      - "web/**"
-      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
